@@ -650,7 +650,7 @@ const ScholarshipCalculator: React.FC = () => {
 
         <footer className="pt-2 border-t border-slate-800/60 mt-2 text-[11px] text-slate-400 flex flex-col items-start gap-1">
           <span className="font-semibold tracking-wide">UNIDEP</span>
-          <span>ReLead (Marca de derechos reservados)</span>
+          <span>ReLead®</span>
         </footer>
       </div>
     </div>
