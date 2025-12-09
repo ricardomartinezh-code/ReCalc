@@ -104,13 +104,22 @@ const obtenerPrecioListaEspecial = (
     modalidad === "presencial" || modalidad === "mixta";
   const plantelNorm = normalizarTexto(plantel);
 
+  // Excepciones para licenciatura en planteles específicos
   if (esEscolarOMixta && nivel === "licenciatura") {
+    // Culiacán y Querétaro (ya existentes)
     if (plantelNorm === "culiacan" || plantelNorm === "queretaro") {
       if (plan === 11) return 3710;
       if (plan === 9) return 4594;
     }
+
+    // Chihuahua: precios especiales por plan (11 y 9 cuatrimestres)
+    if (plantelNorm === "chihuahua") {
+      if (plan === 11) return 3336; // Chihuahua 11 cuatrimestres
+      if (plan === 9) return 4379;  // Chihuahua 9 cuatrimestres
+    }
   }
 
+  // Excepción para Salud en Chihuahua (ya existente)
   if (esEscolarOMixta && nivel === "salud") {
     if (plantelNorm === "chihuahua") {
       return 3988;
@@ -119,6 +128,7 @@ const obtenerPrecioListaEspecial = (
 
   return null;
 };
+
 
 const COSTOS: CostoItem[] = costosData as CostoItem[];
 
