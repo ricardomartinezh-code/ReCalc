@@ -1,12 +1,89 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Calculadora de becas 2026</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body class="bg-slate-950">
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReSlides · Generador de presentaciones</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Coda&family=Oranienbaum&family=Sorts+Mill+Goudy&family=Unna&display=swap" rel="stylesheet" />
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" rel="stylesheet" />
+  <!-- JSZip for zipping files in browser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- FileSaver for saving generated zip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <!-- PptxGenJS for generating PPTX files -->
+  <!-- Se utiliza una versión de la biblioteca compatible con navegadores -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.4.0/pptxgen.bundle.js"></script>
+  <style>
+    body {
+      font-family: 'Oranienbaum', serif;
+      background: radial-gradient(circle at top left, #E2E8F0 0%, #EDF2F7 40%, #F7FAFC 100%);
+    }
+    h1, h2, h3 {
+      font-family: 'Sorts Mill Goudy', serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-[#1B365D] text-white py-4 shadow-md">
+    <div class="max-w-4xl mx-auto px-4 flex items-center">
+      <i class="fas fa-chalkboard-teacher text-3xl mr-3"></i>
+      <h1 class="text-2xl font-bold">ReSlides</h1>
+    </div>
+  </header>
+  <!-- Main content -->
+  <main class="flex-1 max-w-4xl mx-auto px-4 mt-6 mb-12">
+    <!-- Conversation history -->
+    <section id="history" class="mb-4 space-y-4"></section>
+    <!-- Input form -->
+    <form id="chat-form" class="bg-white rounded-lg shadow-md p-4 flex flex-col space-y-3">
+      <label for="script-input" class="font-semibold text-[#1B365D]">Escribe tu guion de presentación</label>
+      <textarea id="script-input" class="border rounded p-2 h-32 resize-y" placeholder="Ejemplo:\nDiapositiva 1\nTítulo: Introducción\nContenido: Punto 1; Punto 2; Punto 3\n\nDiapositiva 2\nTítulo: Gráfico de uso\nDatos: Labels: Resúmenes, Ideas, Redacción; Valores: 4.2, 3.8, 2.5\nDescripción: Frecuencia de uso"></textarea>
+      <!-- Opciones de personalización -->
+      <div class="flex flex-wrap gap-4">
+        <label class="flex flex-col text-sm text-[#1B365D] w-40">
+          Tema de color
+          <select id="theme-select" class="border rounded p-1 mt-1">
+            <option value="default" selected>Azul y dorado</option>
+            <option value="purpura">Púrpura</option>
+            <option value="verde">Verde</option>
+          </select>
+        </label>
+        <label class="flex flex-col text-sm text-[#1B365D] w-40">
+          Tipografía
+          <select id="font-select" class="border rounded p-1 mt-1">
+            <option value="default" selected>Clásica</option>
+            <option value="moderna">Moderna</option>
+          </select>
+        </label>
+      </div>
+      <div class="flex items-center space-x-4">
+        <label class="flex items-center space-x-2 cursor-pointer">
+          <i class="fas fa-paperclip text-[#1B365D]"></i>
+          <span class="text-sm text-[#1B365D]">Adjuntar archivo (opcional)</span>
+          <input type="file" id="file-input" class="hidden" multiple />
+        </label>
+        <button type="submit" class="ml-auto bg-[#1B365D] hover:bg-[#2C5F7F] text-white px-4 py-2 rounded-lg flex items-center space-x-2">
+          <i class="fas fa-paper-plane"></i>
+          <span>Enviar</span>
+        </button>
+      </div>
+    </form>
+    <!-- Generated files list -->
+    <section id="files" class="mt-8 hidden">
+      <h2 class="text-xl font-bold text-[#1B365D] mb-3">Archivos generados</h2>
+      <ul id="files-list" class="space-y-2"></ul>
+    </section>
+  </main>
+  <!-- Footer -->
+  <footer class="bg-gray-200 text-center py-4 text-sm text-gray-500 mt-auto">
+    Creado con ReSlides — despliegue preparado para Vercel
+  </footer>
+  <!-- App script -->
+  <script src="./script.js"></script>
+</body>
 </html>
