@@ -476,9 +476,9 @@ const ScholarshipCalculator: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-4 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2">
       <div className="w-full max-w-4xl rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-emerald-500/10 px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4">
         <header className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight [@media(max-height:700px)]:text-lg">
-            Calculadora de becas 2026
-          </h1>
+	          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight [@media(max-height:700px)]:text-lg">
+	            ReLead ReCalc
+	          </h1>
           <p className="text-sm text-slate-300 max-w-2xl [@media(max-height:700px)]:hidden">
             Selecciona la línea de negocio, modalidad, plan de estudios y plantel.
             Luego ingresa el promedio y obtén el porcentaje de beca y el monto mensual

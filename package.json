@@ -1,6 +1,6 @@
 {
-  "name": "calculadora-becas-2026",
-  "version": "0.0.0",
+  "name": "relead-recalc",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "vite",
