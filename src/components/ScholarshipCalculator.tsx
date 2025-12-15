@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import costosData from "../data/costos_2026.json";
+import CornerLogo from "./CornerLogo";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
@@ -552,6 +553,7 @@ const ScholarshipCalculator: React.FC = () => {
           : "bg-slate-950"
       }`}
     >
+      <CornerLogo />
       <div
         className={`w-full max-w-4xl rounded-2xl border bg-slate-900/80 shadow-2xl px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4 ${
           isRegreso
@@ -802,8 +804,18 @@ const ScholarshipCalculator: React.FC = () => {
           </section>
         )}
 
-        <footer className="pt-4 border-t border-slate-800/60 [@media(max-height:700px)]:hidden0 mt-4 text-[11px] text-slate-400 flex flex-col items-center justify-center gap-1 text-center">
-         <span>Powered by ReLead©</span>
+        <footer className="mt-6 border-t border-slate-800/60 pt-6 text-[11px] text-slate-400 flex flex-col items-center justify-center gap-2 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <img
+              src="/branding/recalc-logo.gif"
+              alt="ReCalc Scholarship logo"
+              width={96}
+              height={32}
+              className="h-8 w-auto object-contain opacity-90"
+              loading="lazy"
+            />
+          </div>
+          <span>Powered by ReLead©</span>
         </footer>
       </div>
     </div>
