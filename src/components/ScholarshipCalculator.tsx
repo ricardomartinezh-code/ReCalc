@@ -561,7 +561,7 @@ const ScholarshipCalculator: React.FC = () => {
       >
 	        <header className="space-y-1 text-center">
 	          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight [@media(max-height:700px)]:text-lg">
-	            Calculadora de becas
+	            ReCalc Scholarship
 	          </h1>
 	          <p className="text-sm text-slate-300 max-w-2xl mx-auto [@media(max-height:700px)]:hidden">
 	            Selecciona la línea de negocio, modalidad, plan de estudios y plantel.
