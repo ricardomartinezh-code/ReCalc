@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import costosData from "../data/costos_2026.json";
-import CornerLogo from "./CornerLogo";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
 type Tier = "T1" | "T2" | "T3";
 type Programa = "nuevo" | "regreso";
+type UniversityKey = "demo" | "unidep";
 
 interface RangoPromedio {
   min: number;
@@ -139,6 +139,11 @@ const obtenerPrecioListaEspecial = (
 };
 
 const COSTOS: CostoItem[] = costosData as CostoItem[];
+
+interface ScholarshipCalculatorProps {
+  university?: UniversityKey;
+  onUniversityChange?: (university: UniversityKey) => void;
+}
 
 interface SearchableSelectProps {
   label: string;
@@ -275,7 +280,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   );
 };
 
-const ScholarshipCalculator: React.FC = () => {
+const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
+  university = "demo",
+  onUniversityChange,
+}) => {
   const [programa, setPrograma] = useState<Programa>("nuevo");
   const [nivel, setNivel] = useState<Nivel | "">("");
   const [modalidad, setModalidad] = useState<Modalidad | "">("");
@@ -553,7 +561,6 @@ const ScholarshipCalculator: React.FC = () => {
           : "bg-slate-950"
       }`}
     >
-      <CornerLogo />
       <div
         className={`w-full max-w-4xl rounded-2xl border bg-slate-900/80 shadow-2xl px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4 ${
           isRegreso
@@ -570,6 +577,25 @@ const ScholarshipCalculator: React.FC = () => {
 	            Luego ingresa el promedio y obtén el porcentaje de beca y el monto mensual
 	            de colegiatura.
 	          </p>
+            <div className="pt-3 flex flex-col items-center gap-2">
+              <label className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                Selecciona tu Universidad
+              </label>
+              <select
+                value={university}
+                onChange={(e) =>
+                  onUniversityChange?.(e.target.value as UniversityKey)
+                }
+                className={`w-full max-w-[280px] rounded-xl border bg-slate-900/60 px-3 py-2 text-sm text-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+                  accent === "violet"
+                    ? "border-slate-700 focus:ring-violet-400/70"
+                    : "border-slate-700 focus:ring-emerald-400/70"
+                }`}
+              >
+                <option value="demo">Demo</option>
+                <option value="unidep">UNIDEP</option>
+              </select>
+            </div>
 	        </header>
 
         {error && (
@@ -805,16 +831,18 @@ const ScholarshipCalculator: React.FC = () => {
         )}
 
         <footer className="mt-6 border-t border-slate-800/60 pt-6 text-[11px] text-slate-400 flex flex-col items-center justify-center gap-2 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <img
-              src="/branding/recalc-logo.gif"
-              alt="ReCalc Scholarship logo"
-              width={96}
-              height={32}
-              className="h-8 w-auto object-contain opacity-90"
-              loading="lazy"
-            />
-          </div>
+          {university === "unidep" && (
+            <div className="flex items-center justify-center">
+              <img
+                src="/branding/recalc-logo.gif"
+                alt="ReCalc Scholarship logo"
+                width={220}
+                height={64}
+                className="h-10 sm:h-12 w-auto max-w-[240px] object-contain opacity-95 drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]"
+                loading="lazy"
+              />
+            </div>
+          )}
           <span>Powered by ReLead©</span>
         </footer>
       </div>
