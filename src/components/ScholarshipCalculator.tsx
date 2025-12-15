@@ -4,6 +4,7 @@ import costosData from "../data/costos_2026.json";
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
 type Tier = "T1" | "T2" | "T3";
+type Programa = "nuevo" | "regreso";
 
 interface RangoPromedio {
   min: number;
@@ -145,6 +146,7 @@ interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  accent?: "emerald" | "violet";
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -154,6 +156,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   value,
   onChange,
   disabled,
+  accent = "emerald",
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -173,7 +176,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       <div className="relative">
         <button
           type="button"
-          className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950
+          className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+            accent === "violet"
+              ? "focus:ring-violet-400/70"
+              : "focus:ring-emerald-400/70"
+          }
             ${
               disabled
                 ? "cursor-not-allowed border-slate-700 bg-slate-800/60 text-slate-500"
@@ -213,7 +220,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar..."
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  className={`w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 ${
+                    accent === "violet"
+                      ? "focus:border-violet-400 focus:ring-violet-400"
+                      : "focus:border-emerald-400 focus:ring-emerald-400"
+                  }`}
                 />
               </div>
             )}
@@ -228,7 +239,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <button
                     type="button"
                     className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-800/80 ${
-                      opt === value ? "text-emerald-300" : "text-slate-100"
+                      opt === value
+                        ? accent === "violet"
+                          ? "text-violet-300"
+                          : "text-emerald-300"
+                        : "text-slate-100"
                     }`}
                     onClick={() => {
                       onChange(opt);
@@ -238,7 +253,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   >
                     <span>{opt}</span>
                     {opt === value && (
-                      <span className="text-[10px] uppercase tracking-wide text-emerald-400">
+                      <span
+                        className={`text-[10px] uppercase tracking-wide ${
+                          accent === "violet"
+                            ? "text-violet-400"
+                            : "text-emerald-400"
+                        }`}
+                      >
                         seleccionado
                       </span>
                     )}
@@ -254,6 +275,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 };
 
 const ScholarshipCalculator: React.FC = () => {
+  const [programa, setPrograma] = useState<Programa>("nuevo");
   const [nivel, setNivel] = useState<Nivel | "">("");
   const [modalidad, setModalidad] = useState<Modalidad | "">("");
   const [plan, setPlan] = useState<number | "">("");
@@ -268,6 +290,8 @@ const ScholarshipCalculator: React.FC = () => {
   const [error, setError] = useState<string>("");
 
   const costos = COSTOS;
+  const isRegreso = programa === "regreso";
+  const accent = isRegreso ? "violet" : "emerald";
 
   const nivelesDisponibles = useMemo(() => {
     const set = new Set<Nivel>();
@@ -281,7 +305,13 @@ const ScholarshipCalculator: React.FC = () => {
     costos
       .filter((c) => c.nivel === nivel)
       .forEach((c) => set.add(c.modalidad));
-    return Array.from(set).sort();
+    const modalidades = Array.from(set);
+    const filtradas =
+      nivel === "salud"
+        ? modalidades.filter((m) => m !== "mixta")
+        : modalidades;
+    const orden: Modalidad[] = ["presencial", "mixta", "online"];
+    return filtradas.sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
   }, [costos, nivel]);
 
   const planesDisponibles = useMemo(() => {
@@ -449,18 +479,60 @@ const ScholarshipCalculator: React.FC = () => {
       plantel || ""
     );
 
-    let montoFinal = match.monto;
+    let porcentajeAplicado = match.porcentaje;
 
-    if (especial !== null) {
-      montoFinal =
-        Math.round(especial * (1 - match.porcentaje / 100) * 100) / 100;
+    if (isRegreso) {
+      if (modalidad === "online") {
+        const candidatosNoOnline = costos
+          .filter((c) => {
+            if (c.nivel !== nivel || c.plan !== plan) return false;
+            if (c.modalidad === "online") return false;
+            return c.modalidad === "presencial" || c.modalidad === "mixta";
+          })
+          .sort((a, b) => {
+            if (a.modalidad !== b.modalidad) {
+              return a.modalidad === "presencial" ? -1 : 1;
+            }
+            const rankTier = (t?: Tier) =>
+              t === "T1" ? 0 : t === "T2" ? 1 : t === "T3" ? 2 : 3;
+            return rankTier(a.tier) - rankTier(b.tier);
+          });
+
+        const matchNoOnline = candidatosNoOnline.find((c) => {
+          const min = c.rango.min - 1e-6;
+          const max = c.rango.max + 1e-6;
+          return promedioNum >= min && promedioNum <= max;
+        });
+
+        if (matchNoOnline) {
+          porcentajeAplicado = matchNoOnline.porcentaje;
+        }
+      }
+
+      porcentajeAplicado = Math.min(porcentajeAplicado, 25);
     }
 
+    const base =
+      especial !== null
+        ? especial
+        : match.porcentaje >= 100
+          ? null
+          : match.monto / (1 - match.porcentaje / 100);
+
+    if (base === null) {
+      setError("No se pudo calcular el precio lista para esta combinación.");
+      return;
+    }
+
+    const montoFinal =
+      Math.round(base * (1 - porcentajeAplicado / 100) * 100) / 100;
+
     setResultadoMonto(montoFinal);
-    setResultadoPorcentaje(match.porcentaje);
+    setResultadoPorcentaje(porcentajeAplicado);
   };
 
   const limpiar = () => {
+    setPrograma("nuevo");
     setNivel("");
     setModalidad("");
     setPlan("");
@@ -473,11 +545,23 @@ const ScholarshipCalculator: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-4 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2">
-      <div className="w-full max-w-4xl rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl shadow-emerald-500/10 px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4">
+    <div
+      className={`min-h-screen text-slate-50 flex items-center justify-center p-4 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
+        isRegreso
+          ? "bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950"
+          : "bg-slate-950"
+      }`}
+    >
+      <div
+        className={`w-full max-w-4xl rounded-2xl border bg-slate-900/80 shadow-2xl px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4 ${
+          isRegreso
+            ? "border-violet-800/50 shadow-violet-500/10"
+            : "border-slate-800 shadow-emerald-500/10"
+        }`}
+      >
 	        <header className="space-y-1 text-center">
 	          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight [@media(max-height:700px)]:text-lg">
-	            ReCalc Scholarship
+	            Calculadora de becas
 	          </h1>
 	          <p className="text-sm text-slate-300 max-w-2xl mx-auto [@media(max-height:700px)]:hidden">
 	            Selecciona la línea de negocio, modalidad, plan de estudios y plantel.
@@ -492,7 +576,21 @@ const ScholarshipCalculator: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
+          <SearchableSelect
+            label="Programa"
+            options={["Nuevo ingreso", "Regreso"]}
+            value={programa === "regreso" ? "Regreso" : "Nuevo ingreso"}
+            onChange={(val) => {
+              setPrograma(val === "Regreso" ? "regreso" : "nuevo");
+              setResultadoMonto(null);
+              setResultadoPorcentaje(null);
+              setError("");
+            }}
+            placeholder="Selecciona programa"
+            accent={accent}
+          />
+
           <SearchableSelect
             label="Línea de negocio"
             options={nivelesDisponibles.map((n) => n.charAt(0).toUpperCase() + n.slice(1))}
@@ -510,6 +608,7 @@ const ScholarshipCalculator: React.FC = () => {
             }}
             placeholder="Selecciona nivel"
             disabled={!nivelesDisponibles.length}
+            accent={accent}
           />
 
           <SearchableSelect
@@ -531,8 +630,11 @@ const ScholarshipCalculator: React.FC = () => {
             }}
             placeholder="Selecciona modalidad"
             disabled={!modalidadesDisponibles.length}
+            accent={accent}
           />
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
           <SearchableSelect
             label="Plan de estudios (cuatrimestres)"
             options={planesDisponibles.map((p) => `${p} cuatrimestres`)}
@@ -545,6 +647,7 @@ const ScholarshipCalculator: React.FC = () => {
             }}
             placeholder="Selecciona plan"
             disabled={!planesDisponibles.length}
+            accent={accent}
           />
 
           <SearchableSelect
@@ -571,6 +674,7 @@ const ScholarshipCalculator: React.FC = () => {
                 modalidad !== "online"
               ) || plantelesDisponibles.length === 0
             }
+            accent={accent}
           />
         </div>
 
@@ -588,7 +692,11 @@ const ScholarshipCalculator: React.FC = () => {
                 value={promedio}
                 onChange={(e) => setPromedio(e.target.value)}
                 placeholder="Ej. 8.5"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950"
+                className={`w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+                  isRegreso
+                    ? "focus:border-violet-400 focus:ring-violet-400/70"
+                    : "focus:border-emerald-400 focus:ring-emerald-400/70"
+                }`}
               />
               <span className="text-xs text-slate-400 hidden md:inline">
                 Usa un decimal
@@ -607,7 +715,11 @@ const ScholarshipCalculator: React.FC = () => {
             <button
               type="button"
               onClick={handleCalcular}
-              className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs md:text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md shadow-emerald-500/40 hover:bg-emerald-400 transition"
+              className={`rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md transition ${
+                isRegreso
+                  ? "bg-violet-500 shadow-violet-500/40 hover:bg-violet-400"
+                  : "bg-emerald-500 shadow-emerald-500/40 hover:bg-emerald-400"
+              }`}
             >
               Calcular beca
             </button>
@@ -637,23 +749,49 @@ const ScholarshipCalculator: React.FC = () => {
         )}
 
         {resultadoMonto !== null && resultadoPorcentaje !== null && (
-          <section className="mt-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <section
+            className={`mt-4 rounded-2xl border p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${
+              isRegreso
+                ? "border-violet-500/40 bg-violet-500/10"
+                : "border-emerald-500/40 bg-emerald-500/10"
+            }`}
+          >
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+              <p
+                className={`text-xs font-semibold uppercase tracking-wide ${
+                  isRegreso ? "text-violet-300" : "text-emerald-300"
+                }`}
+              >
                 Resultado de la beca
               </p>
-              <p className="mt-1 text-lg md:text-2xl font-semibold text-emerald-100">
+              <p
+                className={`mt-1 text-lg md:text-2xl font-semibold ${
+                  isRegreso ? "text-violet-100" : "text-emerald-100"
+                }`}
+              >
                 Beca del {resultadoPorcentaje}%
               </p>
-              <p className="mt-1 text-sm text-emerald-50/90">
+              <p
+                className={`mt-1 text-sm ${
+                  isRegreso ? "text-violet-50/90" : "text-emerald-50/90"
+                }`}
+              >
                 Monto mensual estimado de colegiatura con beca aplicada.
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-medium text-emerald-200/80">
+              <p
+                className={`text-xs font-medium ${
+                  isRegreso ? "text-violet-200/80" : "text-emerald-200/80"
+                }`}
+              >
                 Colegiatura mensual
               </p>
-              <p className="text-2xl md:text-3xl font-bold text-emerald-300">
+              <p
+                className={`text-2xl md:text-3xl font-bold ${
+                  isRegreso ? "text-violet-300" : "text-emerald-300"
+                }`}
+              >
                 {resultadoMonto.toLocaleString("es-MX", {
                   style: "currency",
                   currency: "MXN",
