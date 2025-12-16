@@ -73,7 +73,7 @@ export default function LandingPage() {
           </button>
         </div>
 
-        <footer className="mt-10 pt-6 border-t border-slate-800/60 flex items-center justify-center">
+        <footer className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-center">
           <img
             src="/branding/relead-logo.gif"
             alt="ReLead"
