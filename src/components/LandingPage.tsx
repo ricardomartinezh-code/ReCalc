@@ -77,7 +77,7 @@ export default function LandingPage() {
           <img
             src="/branding/relead-logo.gif"
             alt="ReLead"
-            className="h-16 sm:h-20 md:h-24 w-auto opacity-90"
+            className="h-32 sm:h-40 md:h-48 w-auto opacity-90"
             loading="lazy"
           />
         </footer>
