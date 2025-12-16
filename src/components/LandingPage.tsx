@@ -27,7 +27,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/50 shadow-2xl px-6 py-8 md:px-10 md:py-10 recalc-fade-up">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/50 shadow-2xl px-6 pt-8 pb-2 md:px-10 md:pt-10 md:pb-3 recalc-fade-up">
         <header className="text-center space-y-2">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight">
             ReCalc Scholarship
@@ -73,7 +73,7 @@ export default function LandingPage() {
           </button>
         </div>
 
-        <footer className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-center">
+        <footer className="mt-0 py-2 border-t border-slate-800/60 flex items-center justify-center">
           <img
             src="/branding/relead-logo.gif"
             alt="ReLead"
