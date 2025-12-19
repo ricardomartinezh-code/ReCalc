@@ -10,8 +10,8 @@ function getTopSegment(pathname: string): string {
 function App() {
   const topSegment = getTopSegment(window.location.pathname).toLowerCase();
   if (topSegment === "unidep") return <ScholarshipCalculator university="unidep" />;
-  if (topSegment === "utc") return <BlockedUniversity label="Demo 1" />;
-  if (topSegment === "ula") return <BlockedUniversity label="Demo 2" />;
+  if (topSegment === "utc") return <BlockedUniversity label="UTC" />;
+  if (topSegment === "ula") return <BlockedUniversity label="ULA" />;
   return <LandingPage />;
 }
 

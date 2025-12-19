@@ -5,7 +5,7 @@ import costosMetaData from "../data/costos_2026_meta.json";
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
 type Tier = "T1" | "T2" | "T3";
-type Programa = "nuevo" | "regreso";
+type Programa = "nuevo" | "regreso" | "academia";
 type ProgramaDataKey = "nuevo_ingreso" | "reingreso";
 type UniversityKey = "unidep";
 
@@ -19,6 +19,7 @@ interface CostoRule {
   modalidad: Modalidad;
   plan: number;
   tier?: Tier | null;
+  plantel?: string;
   rango: RangoPromedio;
   porcentaje: number;
   monto: number;
@@ -45,7 +46,7 @@ interface PlantelMeta {
 
 interface CostosMeta {
   version: string;
-  planteles_por_nivel_y_modalidad: Record<string, string[]>;
+  disponibilidad: Record<string, string[]>;
   planteles: Record<string, PlantelMeta>;
 }
 
@@ -53,7 +54,7 @@ const COSTOS_RULES: CostoRule[] = costosFlatRulesData as CostoRule[];
 const COSTOS_META: CostosMeta = costosMetaData as CostosMeta;
 
 const resolveProgramaKey = (p: Programa): ProgramaDataKey =>
-  p === "regreso" ? "reingreso" : "nuevo_ingreso";
+  p === "nuevo" ? "nuevo_ingreso" : "reingreso";
 
 interface ScholarshipCalculatorProps {
   university?: UniversityKey;
@@ -69,7 +70,7 @@ interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-  accent?: "emerald" | "violet";
+  accent?: "emerald" | "violet" | "amber";
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -94,6 +95,30 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   }, [options, query]);
 
   const selectedLabel = value || placeholder;
+  const accentRing =
+    accent === "violet"
+      ? "focus:ring-violet-400/70"
+      : accent === "amber"
+        ? "focus:ring-amber-400/70"
+        : "focus:ring-emerald-400/70";
+  const accentInput =
+    accent === "violet"
+      ? "focus:border-violet-400 focus:ring-violet-400"
+      : accent === "amber"
+        ? "focus:border-amber-400 focus:ring-amber-400"
+        : "focus:border-emerald-400 focus:ring-emerald-400";
+  const accentSelected =
+    accent === "violet"
+      ? "text-violet-300"
+      : accent === "amber"
+        ? "text-amber-300"
+        : "text-emerald-300";
+  const accentTag =
+    accent === "violet"
+      ? "text-violet-400"
+      : accent === "amber"
+        ? "text-amber-400"
+        : "text-emerald-400";
 
   useEffect(() => {
     if (!open) setQuery("");
@@ -134,9 +159,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <button
           type="button"
           className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
-            accent === "violet"
-              ? "focus:ring-violet-400/70"
-              : "focus:ring-emerald-400/70"
+            accentRing
           }
             ${
               disabled
@@ -179,9 +202,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar..."
                   className={`w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 ${
-                    accent === "violet"
-                      ? "focus:border-violet-400 focus:ring-violet-400"
-                      : "focus:border-emerald-400 focus:ring-emerald-400"
+                    accentInput
                   }`}
                 />
               </div>
@@ -198,9 +219,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     type="button"
                     className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-800/80 ${
                       opt === value
-                        ? accent === "violet"
-                          ? "text-violet-300"
-                          : "text-emerald-300"
+                        ? accentSelected
                         : "text-slate-100"
                     }`}
                     onClick={() => {
@@ -212,11 +231,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                     <span>{opt}</span>
                     {opt === value && (
                       <span
-                        className={`text-[10px] uppercase tracking-wide ${
-                          accent === "violet"
-                            ? "text-violet-400"
-                            : "text-emerald-400"
-                        }`}
+                        className={`text-[10px] uppercase tracking-wide ${accentTag}`}
                       >
                         seleccionado
                       </span>
@@ -250,12 +265,17 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [error, setError] = useState<string>("");
 
   const isRegreso = programa === "regreso";
-  const accent = isRegreso ? "violet" : "emerald";
+  const isAcademia = programa === "academia";
+  const isProgramaExtras = isRegreso || isAcademia;
+  const accent = isRegreso ? "violet" : isAcademia ? "amber" : "emerald";
+  const extrasTone = isAcademia ? "amber" : "violet";
 
   const [extrasActivos, setExtrasActivos] = useState(false);
   const [extrasAbiertos, setExtrasAbiertos] = useState(false);
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<string[]>([]);
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
+  const [beneficioActivo, setBeneficioActivo] = useState(false);
+  const [beneficioPorcentaje, setBeneficioPorcentaje] = useState<number>(10);
 
   const requierePlantel = useMemo(() => {
     if (!nivel || !modalidad) return false;
@@ -320,7 +340,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           ? "salud_presencial"
           : "preparatoria_presencial_mixta";
 
-    const lista = COSTOS_META.planteles_por_nivel_y_modalidad?.[key] ?? [];
+    const lista = COSTOS_META.disponibilidad?.[key] ?? [];
     if (lista.length > 0) {
       return [...lista].sort((a, b) => a.localeCompare(b, "es"));
     }
@@ -342,7 +362,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [plantelResolvido]);
 
   const extrasTotal = useMemo(() => {
-    if (!isRegreso || !extrasActivos || !extrasDisponibles) return 0;
+    if (!isProgramaExtras || !extrasActivos || !extrasDisponibles) return 0;
     const selected = new Set(extrasSeleccionados);
     let total = 0;
     Object.values(extrasDisponibles).forEach((items) => {
@@ -351,7 +371,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       });
     });
     return Math.round(total * 100) / 100;
-  }, [extrasActivos, extrasDisponibles, extrasSeleccionados, isRegreso]);
+  }, [extrasActivos, extrasDisponibles, extrasSeleccionados, isProgramaExtras]);
+
+  const beneficiosDisponibles = [10, 15, 20, 25, 30];
 
   useEffect(() => {
     if (!nivel || !modalidad || !plan) {
@@ -375,15 +397,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       return;
     }
 
-    const referencia = COSTOS_RULES.find((c) => {
-      if (c.nivel !== nivel || c.modalidad !== modalidad || c.plan !== plan) {
-        return false;
-      }
-      if (requierePlantel && tierResolvido) {
-        return c.tier === tierResolvido;
-      }
-      return true;
+    const programaKey = resolveProgramaKey(programa);
+    const baseRules = COSTOS_RULES.filter((c) => {
+      if (c.programa !== programaKey) return false;
+      return c.nivel === nivel && c.modalidad === modalidad && c.plan === plan;
     });
+    let referencia = baseRules[0];
+    if (requierePlantel && plantel) {
+      const porPlantel = baseRules.find((c) => c.plantel === plantel);
+      if (porPlantel) {
+        referencia = porPlantel;
+      } else if (tierResolvido) {
+        referencia = baseRules.find(
+          (c) => c.tier === tierResolvido && !c.plantel
+        );
+      }
+    }
 
     if (!referencia || referencia.porcentaje >= 100) {
       setPrecioLista(null);
@@ -392,7 +421,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     const base = referencia.monto / (1 - referencia.porcentaje / 100);
     setPrecioLista(Math.round(base * 100) / 100);
-  }, [nivel, modalidad, plan, plantel, requierePlantel, tierResolvido]);
+  }, [nivel, modalidad, plan, plantel, requierePlantel, tierResolvido, programa]);
 
   const handleCalcular = () => {
     setError("");
@@ -429,16 +458,21 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       return;
     }
 
-    const candidatos = COSTOS_RULES.filter((c) => {
+    const baseRules = COSTOS_RULES.filter((c) => {
       if (c.programa !== programaKey) return false;
-      if (c.nivel !== nivel || c.modalidad !== modalidad || c.plan !== plan) {
-        return false;
-      }
-      if (requierePlantel && tierResolvido) {
-        return c.tier === tierResolvido;
-      }
-      return true;
+      return c.nivel === nivel && c.modalidad === modalidad && c.plan === plan;
     });
+    let candidatos = baseRules;
+    if (requierePlantel && plantel) {
+      const porPlantel = baseRules.filter((c) => c.plantel === plantel);
+      if (porPlantel.length) {
+        candidatos = porPlantel;
+      } else if (tierResolvido) {
+        candidatos = baseRules.filter(
+          (c) => c.tier === tierResolvido && !c.plantel
+        );
+      }
+    }
 
     const match = candidatos.find((c) => {
       const min = c.rango.min - 1e-6;
@@ -454,7 +488,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     }
 
     let porcentajeAplicado = match.porcentaje;
-    if (isRegreso) {
+    if (isProgramaExtras) {
       porcentajeAplicado = Math.min(porcentajeAplicado, 25);
     }
 
@@ -475,10 +509,15 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       base = match.monto / (1 - match.porcentaje / 100);
     }
 
-    const extrasAplicados = isRegreso && extrasActivos ? extrasTotal : 0;
+    const extrasAplicados = isProgramaExtras && extrasActivos ? extrasTotal : 0;
     const colegiaturaConBeca =
       Math.round(base * (1 - porcentajeAplicado / 100) * 100) / 100;
-    const montoFinal = Math.round((colegiaturaConBeca + extrasAplicados) * 100) / 100;
+    const descuentoExtra = beneficioActivo ? beneficioPorcentaje : 0;
+    const colegiaturaConBeneficio = descuentoExtra
+      ? Math.round(colegiaturaConBeca * (1 - descuentoExtra / 100) * 100) / 100
+      : colegiaturaConBeca;
+    const montoFinal =
+      Math.round((colegiaturaConBeneficio + extrasAplicados) * 100) / 100;
 
     setResultadoMonto(montoFinal);
     setResultadoPorcentaje(porcentajeAplicado);
@@ -498,14 +537,19 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setExtrasActivos(false);
     setExtrasAbiertos(false);
     setExtrasSeleccionados([]);
+    setBeneficioActivo(false);
+    setBeneficioPorcentaje(10);
+    setOpenSelectId(null);
   };
 
   return (
     <div
       className={`min-h-screen text-slate-50 flex items-center justify-center p-4 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
-        isRegreso
-          ? "bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950"
-          : "bg-slate-950"
+        isAcademia
+          ? "bg-gradient-to-br from-amber-950 via-slate-950 to-slate-950"
+          : isRegreso
+            ? "bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950"
+            : "bg-slate-950"
       }`}
     >
         <div
@@ -521,13 +565,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 <img
                   src="/branding/logo-recalc.png"
                   alt="ReCalc Scholarship"
-                  className="h-12 sm:h-14 md:h-16 w-auto max-w-[320px] md:max-w-[420px] object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)]"
+                  className="h-[144px] sm:h-[168px] md:h-[192px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
                   loading="lazy"
                 />
+                <p className="text-[11px] text-slate-400">
+                  Powered by ReLead © {new Date().getFullYear()}
+                </p>
               </div>
 
               {university === "unidep" && (
-                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-12">
+                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[140px] md:top-[170px]">
                   <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
                     UNIDEP
                   </span>
@@ -553,16 +600,31 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             openId={openSelectId}
             setOpenId={setOpenSelectId}
             label="Programa"
-            options={["Nuevo ingreso", "Regreso"]}
-            value={programa === "regreso" ? "Regreso" : "Nuevo ingreso"}
+            options={["Nuevo ingreso", "Regreso", "Academia"]}
+            value={
+              programa === "regreso"
+                ? "Regreso"
+                : programa === "academia"
+                  ? "Academia"
+                  : "Nuevo ingreso"
+            }
             onChange={(val) => {
-              setPrograma(val === "Regreso" ? "regreso" : "nuevo");
+              const nextPrograma =
+                val === "Regreso"
+                  ? "regreso"
+                  : val === "Academia"
+                    ? "academia"
+                    : "nuevo";
+              setPrograma(nextPrograma);
               setResultadoMonto(null);
               setResultadoPorcentaje(null);
               setError("");
-              setExtrasActivos(false);
-              setExtrasAbiertos(false);
+              const activarExtras = nextPrograma === "academia";
+              setExtrasActivos(activarExtras);
+              setExtrasAbiertos(activarExtras);
               setExtrasSeleccionados([]);
+              setBeneficioActivo(false);
+              setBeneficioPorcentaje(10);
             }}
             placeholder="Selecciona programa"
             accent={accent}
@@ -671,21 +733,23 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           />
         </div>
 
-        {isRegreso && (
+        {isProgramaExtras && (
           <section
             className={`rounded-2xl border p-4 md:p-5 ${
-              isRegreso
-                ? "border-violet-800/50 bg-violet-950/20"
-                : "border-slate-800 bg-slate-950/30"
+              isAcademia
+                ? "border-amber-800/50 bg-amber-950/20"
+                : "border-violet-800/50 bg-violet-950/20"
             }`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  Regresos · Costos adicionales
+                  {isAcademia ? "Academia · Cargos adicionales" : "Regresos · Costos adicionales"}
                 </p>
                 <p className="mt-1 text-sm text-slate-200">
-                  Visualiza y (opcionalmente) suma cargos extra al cálculo final.
+                  {isAcademia
+                    ? "Estos cargos son el foco principal. El cálculo de colegiatura es opcional."
+                    : "Visualiza y (opcionalmente) suma cargos extra al cálculo final."}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Plantel:{" "}
@@ -695,13 +759,25 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setExtrasAbiertos((v) => !v)}
-                className="rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 hover:border-slate-500 hover:bg-slate-900/60 transition"
-              >
-                {extrasAbiertos ? "Ocultar" : "Ver lista"}
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                {isRegreso && (
+                  <a
+                    href="https://siie-unidep.csweb.mx/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 hover:border-slate-500 hover:bg-slate-900/60 transition"
+                  >
+                    Accede a SIIE
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setExtrasAbiertos((v) => !v)}
+                  className="rounded-xl border border-slate-700 bg-slate-900/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 hover:border-slate-500 hover:bg-slate-900/60 transition"
+                >
+                  {extrasAbiertos ? "Ocultar" : "Ver lista"}
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -710,6 +786,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   type="button"
                   onClick={() => {
                     if (!plantelResolvido || !extrasDisponibles) return;
+                    setResultadoMonto(null);
+                    setResultadoPorcentaje(null);
                     setExtrasActivos((prev) => {
                       const next = !prev;
                       if (next) {
@@ -723,7 +801,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   disabled={!plantelResolvido || !extrasDisponibles}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
                     extrasActivos
-                      ? "border-violet-300/60 bg-violet-500/80"
+                      ? extrasTone === "amber"
+                        ? "border-amber-300/60 bg-amber-500/80"
+                        : "border-violet-300/60 bg-violet-500/80"
                       : "border-slate-600 bg-slate-800/70"
                   } ${
                     !plantelResolvido || !extrasDisponibles
@@ -739,11 +819,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   />
                 </button>
                 <div>
-	                  <p className="text-xs font-semibold text-slate-200">
-	                    Activar costos adicionales
-	                  </p>
-	                </div>
-	              </div>
+                  <p className="text-xs font-semibold text-slate-200">
+                    Activar costos adicionales
+                  </p>
+                </div>
+              </div>
 
               <div className="text-right">
                 <p className="text-[11px] text-slate-400">Total extras</p>
@@ -786,14 +866,20 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                                 key={item.codigo}
                                 className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition ${
                                   checked
-                                    ? "border-violet-500/50 bg-violet-500/10"
+                                    ? extrasTone === "amber"
+                                      ? "border-amber-500/50 bg-amber-500/10"
+                                      : "border-violet-500/50 bg-violet-500/10"
                                     : "border-slate-800/70 bg-slate-900/20"
                                 } ${disabled ? "opacity-60" : "hover:bg-slate-900/40 cursor-pointer"}`}
                               >
                                 <span className="flex items-start gap-2">
                                   <input
                                     type="checkbox"
-                                    className="mt-0.5 accent-violet-500"
+                                    className={`mt-0.5 ${
+                                      extrasTone === "amber"
+                                        ? "accent-amber-500"
+                                        : "accent-violet-500"
+                                    }`}
                                     checked={checked}
                                     disabled={disabled}
                                     onChange={() => {
@@ -803,6 +889,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                                         }
                                         return [...prev, item.codigo];
                                       });
+                                      setResultadoMonto(null);
+                                      setResultadoPorcentaje(null);
                                     }}
                                   />
                                   <span>
@@ -834,6 +922,64 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           </section>
         )}
 
+        <section className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4 md:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Beneficios adicionales
+              </p>
+              <p className="mt-1 text-sm text-slate-200">
+                Descuento extra sobre colegiatura. No aplica a costos adicionales.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setBeneficioActivo((prev) => !prev);
+                setResultadoMonto(null);
+                setResultadoPorcentaje(null);
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
+                beneficioActivo
+                  ? accent === "violet"
+                    ? "border-violet-300/60 bg-violet-500/80"
+                    : accent === "amber"
+                      ? "border-amber-300/60 bg-amber-500/80"
+                      : "border-emerald-300/60 bg-emerald-500/80"
+                  : "border-slate-600 bg-slate-800/70"
+              }`}
+              aria-pressed={beneficioActivo}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-slate-50 shadow transition ${
+                  beneficioActivo ? "translate-x-5" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <SearchableSelect
+              id="beneficio"
+              openId={openSelectId}
+              setOpenId={setOpenSelectId}
+              label="Porcentaje extra"
+              options={beneficiosDisponibles.map((b) => `${b}%`)}
+              value={beneficioActivo ? `${beneficioPorcentaje}%` : ""}
+              onChange={(val) => {
+                const num = Number(val.replace("%", "").trim());
+                setBeneficioPorcentaje(Number.isNaN(num) ? 10 : num);
+                setResultadoMonto(null);
+                setResultadoPorcentaje(null);
+                setError("");
+              }}
+              placeholder="Selecciona porcentaje"
+              disabled={!beneficioActivo}
+              accent={accent}
+            />
+          </div>
+        </section>
+
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)] items-end">
           <div className="space-y-1">
             <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
@@ -849,9 +995,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 onChange={(e) => setPromedio(e.target.value)}
                 placeholder="Ej. 8.5"
                 className={`w-full rounded-xl border border-slate-700 bg-slate-900/70 px-3 py-2.5 text-sm text-slate-50 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
-                  isRegreso
-                    ? "focus:border-violet-400 focus:ring-violet-400/70"
-                    : "focus:border-emerald-400 focus:ring-emerald-400/70"
+                  isAcademia
+                    ? "focus:border-amber-400 focus:ring-amber-400/70"
+                    : isRegreso
+                      ? "focus:border-violet-400 focus:ring-violet-400/70"
+                      : "focus:border-emerald-400 focus:ring-emerald-400/70"
                 }`}
               />
               <span className="text-xs text-slate-400 hidden md:inline">
@@ -872,9 +1020,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               type="button"
               onClick={handleCalcular}
               className={`rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md transition ${
-                isRegreso
-                  ? "bg-violet-500 shadow-violet-500/40 hover:bg-violet-400"
-                  : "bg-emerald-500 shadow-emerald-500/40 hover:bg-emerald-400"
+                isAcademia
+                  ? "bg-amber-500 shadow-amber-500/40 hover:bg-amber-400"
+                  : isRegreso
+                    ? "bg-violet-500 shadow-violet-500/40 hover:bg-violet-400"
+                    : "bg-emerald-500 shadow-emerald-500/40 hover:bg-emerald-400"
               }`}
             >
               Calcular beca
@@ -900,7 +1050,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   maximumFractionDigits: 2,
                 })}
               </p>
-              {isRegreso && extrasActivos && extrasTotal > 0 && (
+              {isProgramaExtras && extrasActivos && extrasTotal > 0 && (
                 <div className="mt-2 text-[11px] text-slate-400 space-y-0.5">
                   <div className="flex items-center justify-end gap-2">
                     <span>Extras:</span>
@@ -931,35 +1081,68 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         {resultadoMonto !== null && resultadoPorcentaje !== null && (
           <section
             className={`mt-4 rounded-2xl border p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${
-              isRegreso
-                ? "border-violet-500/40 bg-violet-500/10"
-                : "border-emerald-500/40 bg-emerald-500/10"
+              isAcademia
+                ? "border-amber-500/40 bg-amber-500/10"
+                : isRegreso
+                  ? "border-violet-500/40 bg-violet-500/10"
+                  : "border-emerald-500/40 bg-emerald-500/10"
             }`}
           >
             <div>
               <p
                 className={`text-xs font-semibold uppercase tracking-wide ${
-                  isRegreso ? "text-violet-300" : "text-emerald-300"
+                  isAcademia
+                    ? "text-amber-300"
+                    : isRegreso
+                      ? "text-violet-300"
+                      : "text-emerald-300"
                 }`}
               >
                 Resultado de la beca
               </p>
               <p
                 className={`mt-1 text-lg md:text-2xl font-semibold ${
-                  isRegreso ? "text-violet-100" : "text-emerald-100"
+                  isAcademia
+                    ? "text-amber-100"
+                    : isRegreso
+                      ? "text-violet-100"
+                      : "text-emerald-100"
                 }`}
               >
                 Beca del {resultadoPorcentaje}%
               </p>
               <p
                 className={`mt-1 text-sm ${
-                  isRegreso ? "text-violet-50/90" : "text-emerald-50/90"
+                  isAcademia
+                    ? "text-amber-50/90"
+                    : isRegreso
+                      ? "text-violet-50/90"
+                      : "text-emerald-50/90"
                 }`}
               >
                 Monto mensual estimado de colegiatura con beca aplicada.
               </p>
-              {isRegreso && extrasActivos && extrasTotal > 0 && (
-                <p className="mt-1 text-xs text-violet-200/80">
+              {beneficioActivo && (
+                <p
+                  className={`mt-1 text-xs ${
+                    isAcademia
+                      ? "text-amber-200/80"
+                      : isRegreso
+                        ? "text-violet-200/80"
+                        : "text-emerald-200/80"
+                  }`}
+                >
+                  Beneficio adicional aplicado: -{beneficioPorcentaje}% sobre colegiatura.
+                </p>
+              )}
+              {isProgramaExtras && extrasActivos && extrasTotal > 0 && (
+                <p
+                  className={`mt-1 text-xs ${
+                    isAcademia
+                      ? "text-amber-200/80"
+                      : "text-violet-200/80"
+                  }`}
+                >
                   Incluye extras (sin aplicar beca):{" "}
                   {extrasTotal.toLocaleString("es-MX", {
                     style: "currency",
@@ -972,14 +1155,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             <div className="text-right">
               <p
                 className={`text-xs font-medium ${
-                  isRegreso ? "text-violet-200/80" : "text-emerald-200/80"
+                  isAcademia
+                    ? "text-amber-200/80"
+                    : isRegreso
+                      ? "text-violet-200/80"
+                      : "text-emerald-200/80"
                 }`}
               >
                 Colegiatura mensual
               </p>
               <p
                 className={`text-2xl md:text-3xl font-bold ${
-                  isRegreso ? "text-violet-300" : "text-emerald-300"
+                  isAcademia
+                    ? "text-amber-300"
+                    : isRegreso
+                      ? "text-violet-300"
+                      : "text-emerald-300"
                 }`}
               >
                 {resultadoMonto.toLocaleString("es-MX", {
@@ -992,11 +1183,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           </section>
         )}
 
+        <div className="mt-6 flex items-center justify-center">
+          <a
+            href="https://www.banxico.org.mx/cep/"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 hover:border-slate-500 hover:bg-slate-900/60 transition"
+          >
+            Consultar CEP Banxico
+          </a>
+        </div>
+
         <footer className="mt-8 border-t border-slate-800/60 pt-5 text-[11px] text-slate-400 flex flex-col items-center justify-center gap-2 text-center">
           <img
             src={university === "unidep" ? "/branding/logo-unidep.png" : "/branding/logo-relead.png"}
             alt={university === "unidep" ? "UNIDEP" : "ReLead"}
-            className="h-10 sm:h-12 w-auto opacity-90 object-contain"
+            className="h-[80px] sm:h-[96px] w-auto opacity-90 object-contain"
             loading="lazy"
           />
           <p>Powered by ReLead © {new Date().getFullYear()}</p>
