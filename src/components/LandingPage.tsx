@@ -35,12 +35,9 @@ export default function LandingPage() {
             <img
               src="/branding/logo-recalc.png"
               alt="ReCalc Scholarship"
-              className="h-[168px] sm:h-[192px] md:h-[216px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+              className="h-[152px] sm:h-[173px] md:h-[194px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
               loading="lazy"
             />
-            <p className="text-[11px] text-slate-400">
-              Powered by ReLead © {new Date().getFullYear()}
-            </p>
           </div>
           <p className="text-sm md:text-base text-slate-300 max-w-xl mx-auto">
             Calcula el porcentaje de beca y la colegiatura estimada según tu
@@ -90,9 +87,6 @@ export default function LandingPage() {
             className="h-[72px] w-auto opacity-90"
             loading="lazy"
           />
-          <p className="text-[11px] text-slate-400">
-            Powered by ReLead © {new Date().getFullYear()}
-          </p>
         </footer>
       </div>
     </div>

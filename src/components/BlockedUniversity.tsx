@@ -13,12 +13,9 @@ export default function BlockedUniversity({ label }: BlockedUniversityProps) {
             <img
               src="/branding/logo-recalc.png"
               alt="ReCalc Scholarship"
-              className="h-[168px] sm:h-[192px] md:h-[216px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+              className="h-[152px] sm:h-[173px] md:h-[194px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
               loading="lazy"
             />
-            <p className="text-[11px] text-slate-400">
-              Powered by ReLead © {new Date().getFullYear()}
-            </p>
           </div>
         </header>
 

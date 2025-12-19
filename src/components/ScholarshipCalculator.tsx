@@ -58,6 +58,7 @@ const resolveProgramaKey = (p: Programa): ProgramaDataKey =>
 
 interface ScholarshipCalculatorProps {
   university?: UniversityKey;
+  initialProgram?: Programa;
 }
 
 interface SearchableSelectProps {
@@ -249,8 +250,9 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
 const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   university = "unidep",
+  initialProgram,
 }) => {
-  const [programa, setPrograma] = useState<Programa>("nuevo");
+  const [programa, setPrograma] = useState<Programa>(initialProgram ?? "nuevo");
   const [nivel, setNivel] = useState<Nivel | "">("");
   const [modalidad, setModalidad] = useState<Modalidad | "">("");
   const [plan, setPlan] = useState<number | "">("");
@@ -270,8 +272,12 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const accent = isRegreso ? "violet" : isAcademia ? "amber" : "emerald";
   const extrasTone = isAcademia ? "amber" : "violet";
 
-  const [extrasActivos, setExtrasActivos] = useState(false);
-  const [extrasAbiertos, setExtrasAbiertos] = useState(false);
+  const [extrasActivos, setExtrasActivos] = useState(
+    initialProgram === "academia"
+  );
+  const [extrasAbiertos, setExtrasAbiertos] = useState(
+    initialProgram === "academia"
+  );
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<string[]>([]);
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
   const [beneficioActivo, setBeneficioActivo] = useState(false);
@@ -374,6 +380,17 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [extrasActivos, extrasDisponibles, extrasSeleccionados, isProgramaExtras]);
 
   const beneficiosDisponibles = [10, 15, 20, 25, 30];
+
+  useEffect(() => {
+    if (!initialProgram) return;
+    setPrograma(initialProgram);
+    const activarExtras = initialProgram === "academia";
+    setExtrasActivos(activarExtras);
+    setExtrasAbiertos(activarExtras);
+    setExtrasSeleccionados([]);
+    setBeneficioActivo(false);
+    setBeneficioPorcentaje(10);
+  }, [initialProgram]);
 
   useEffect(() => {
     if (!nivel || !modalidad || !plan) {
@@ -542,6 +559,145 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setOpenSelectId(null);
   };
 
+  const programSelect = (
+    <SearchableSelect
+      id="programa"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Programa"
+      options={["Nuevo ingreso", "Regreso", "Academia"]}
+      value={
+        programa === "regreso"
+          ? "Regreso"
+          : programa === "academia"
+            ? "Academia"
+            : "Nuevo ingreso"
+      }
+      onChange={(val) => {
+        const nextPrograma =
+          val === "Regreso"
+            ? "regreso"
+            : val === "Academia"
+              ? "academia"
+              : "nuevo";
+        setPrograma(nextPrograma);
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+        setError("");
+        const activarExtras = nextPrograma === "academia";
+        setExtrasActivos(activarExtras);
+        setExtrasAbiertos(activarExtras);
+        setExtrasSeleccionados([]);
+        setBeneficioActivo(false);
+        setBeneficioPorcentaje(10);
+      }}
+      placeholder="Selecciona programa"
+      accent={accent}
+    />
+  );
+
+  const nivelSelect = (
+    <SearchableSelect
+      id="nivel"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Línea de negocio"
+      options={nivelesDisponibles.map((n) => n.charAt(0).toUpperCase() + n.slice(1))}
+      value={
+        nivel ? nivel.charAt(0).toUpperCase() + nivel.slice(1) : ""
+      }
+      onChange={(val) => {
+        const normalizado = val.toLowerCase() as Nivel;
+        setNivel(normalizado);
+        setModalidad("");
+        setPlan("");
+        setPlantel("");
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+        setExtrasActivos(false);
+        setExtrasAbiertos(false);
+        setExtrasSeleccionados([]);
+      }}
+      placeholder="Selecciona nivel"
+      disabled={!nivelesDisponibles.length}
+      accent={accent}
+    />
+  );
+
+  const modalidadSelect = (
+    <SearchableSelect
+      id="modalidad"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Modalidad"
+      options={modalidadesDisponibles.map(
+        (m) => m.charAt(0).toUpperCase() + m.slice(1)
+      )}
+      value={
+        modalidad
+          ? modalidad.charAt(0).toUpperCase() + modalidad.slice(1)
+          : ""
+      }
+      onChange={(val) => {
+        const normalizado = val.toLowerCase() as Modalidad;
+        setModalidad(normalizado);
+        setPlan("");
+        setPlantel("");
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+        setExtrasSeleccionados([]);
+      }}
+      placeholder="Selecciona modalidad"
+      disabled={!modalidadesDisponibles.length}
+      accent={accent}
+    />
+  );
+
+  const planSelect = (
+    <SearchableSelect
+      id="plan"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Plan de estudios (cuatrimestres)"
+      options={planesDisponibles.map((p) => `${p} cuatrimestres`)}
+      value={plan ? `${plan} cuatrimestres` : ""}
+      onChange={(val) => {
+        const num = Number(val.split(" ")[0]);
+        setPlan(Number.isNaN(num) ? "" : num);
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+        setExtrasSeleccionados([]);
+      }}
+      placeholder="Selecciona plan"
+      disabled={!planesDisponibles.length}
+      accent={accent}
+    />
+  );
+
+  const plantelSelect = (
+    <SearchableSelect
+      id="plantel"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label={requierePlantel ? "Plantel" : "Plantel (no aplica)"}
+      options={plantelesDisponibles}
+      value={plantel}
+      onChange={(val) => {
+        setPlantel(val);
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+        setExtrasSeleccionados([]);
+      }}
+      placeholder={
+        requierePlantel
+          ? "Selecciona plantel"
+          : "No es necesario para este nivel o modalidad"
+      }
+      disabled={!requierePlantel || plantelesDisponibles.length === 0}
+      accent={accent}
+    />
+  );
+
   return (
     <div
       className={`min-h-screen text-slate-50 flex items-center justify-center p-4 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
@@ -565,16 +721,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 <img
                   src="/branding/logo-recalc.png"
                   alt="ReCalc Scholarship"
-                  className="h-[144px] sm:h-[168px] md:h-[192px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+                  className="h-[130px] sm:h-[151px] md:h-[173px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
                   loading="lazy"
                 />
-                <p className="text-[11px] text-slate-400">
-                  Powered by ReLead © {new Date().getFullYear()}
-                </p>
               </div>
 
               {university === "unidep" && (
-                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[140px] md:top-[170px]">
+                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[126px] md:top-[150px]">
                   <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
                     UNIDEP
                   </span>
@@ -594,155 +747,35 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <SearchableSelect
-            id="programa"
-            openId={openSelectId}
-            setOpenId={setOpenSelectId}
-            label="Programa"
-            options={["Nuevo ingreso", "Regreso", "Academia"]}
-            value={
-              programa === "regreso"
-                ? "Regreso"
-                : programa === "academia"
-                  ? "Academia"
-                  : "Nuevo ingreso"
-            }
-            onChange={(val) => {
-              const nextPrograma =
-                val === "Regreso"
-                  ? "regreso"
-                  : val === "Academia"
-                    ? "academia"
-                    : "nuevo";
-              setPrograma(nextPrograma);
-              setResultadoMonto(null);
-              setResultadoPorcentaje(null);
-              setError("");
-              const activarExtras = nextPrograma === "academia";
-              setExtrasActivos(activarExtras);
-              setExtrasAbiertos(activarExtras);
-              setExtrasSeleccionados([]);
-              setBeneficioActivo(false);
-              setBeneficioPorcentaje(10);
-            }}
-            placeholder="Selecciona programa"
-            accent={accent}
-          />
+        {isAcademia ? (
+          <>
+            <div className="grid gap-4">{programSelect}</div>
+          </>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-3">
+              {programSelect}
+              {nivelSelect}
+              {modalidadSelect}
+            </div>
 
-          <SearchableSelect
-            id="nivel"
-            openId={openSelectId}
-            setOpenId={setOpenSelectId}
-            label="Línea de negocio"
-            options={nivelesDisponibles.map((n) => n.charAt(0).toUpperCase() + n.slice(1))}
-            value={
-              nivel ? nivel.charAt(0).toUpperCase() + nivel.slice(1) : ""
-            }
-            onChange={(val) => {
-              const normalizado = val.toLowerCase() as Nivel;
-              setNivel(normalizado);
-              setModalidad("");
-              setPlan("");
-              setPlantel("");
-              setResultadoMonto(null);
-              setResultadoPorcentaje(null);
-              setExtrasActivos(false);
-              setExtrasAbiertos(false);
-              setExtrasSeleccionados([]);
-            }}
-            placeholder="Selecciona nivel"
-            disabled={!nivelesDisponibles.length}
-            accent={accent}
-          />
-
-          <SearchableSelect
-            id="modalidad"
-            openId={openSelectId}
-            setOpenId={setOpenSelectId}
-            label="Modalidad"
-            options={modalidadesDisponibles.map(
-              (m) => m.charAt(0).toUpperCase() + m.slice(1)
-            )}
-            value={
-              modalidad
-                ? modalidad.charAt(0).toUpperCase() + modalidad.slice(1)
-                : ""
-            }
-            onChange={(val) => {
-              const normalizado = val.toLowerCase() as Modalidad;
-              setModalidad(normalizado);
-              setPlan("");
-              setPlantel("");
-              setResultadoMonto(null);
-              setResultadoPorcentaje(null);
-              setExtrasSeleccionados([]);
-            }}
-            placeholder="Selecciona modalidad"
-            disabled={!modalidadesDisponibles.length}
-            accent={accent}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <SearchableSelect
-            id="plan"
-            openId={openSelectId}
-            setOpenId={setOpenSelectId}
-            label="Plan de estudios (cuatrimestres)"
-            options={planesDisponibles.map((p) => `${p} cuatrimestres`)}
-            value={plan ? `${plan} cuatrimestres` : ""}
-            onChange={(val) => {
-              const num = Number(val.split(" ")[0]);
-              setPlan(Number.isNaN(num) ? "" : num);
-              setResultadoMonto(null);
-              setResultadoPorcentaje(null);
-              setExtrasSeleccionados([]);
-            }}
-            placeholder="Selecciona plan"
-            disabled={!planesDisponibles.length}
-            accent={accent}
-          />
-
-          <SearchableSelect
-            id="plantel"
-            openId={openSelectId}
-            setOpenId={setOpenSelectId}
-            label={
-              requierePlantel
-                ? "Plantel"
-                : "Plantel (no aplica)"
-            }
-            options={plantelesDisponibles}
-            value={plantel}
-            onChange={(val) => {
-              setPlantel(val);
-              setResultadoMonto(null);
-              setResultadoPorcentaje(null);
-              setExtrasSeleccionados([]);
-            }}
-            placeholder={
-              requierePlantel
-                ? "Selecciona plantel"
-                : "No es necesario para este nivel o modalidad"
-            }
-            disabled={
-              !requierePlantel || plantelesDisponibles.length === 0
-            }
-            accent={accent}
-          />
-        </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {planSelect}
+              {plantelSelect}
+            </div>
+          </>
+        )}
 
         {isProgramaExtras && (
           <section
-            className={`rounded-2xl border p-4 md:p-5 ${
+            className={`rounded-2xl border p-3 md:p-4 ${
               isAcademia
                 ? "border-amber-800/50 bg-amber-950/20"
                 : "border-violet-800/50 bg-violet-950/20"
             }`}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                   {isAcademia ? "Academia · Cargos adicionales" : "Regresos · Costos adicionales"}
                 </p>
@@ -751,7 +784,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     ? "Estos cargos son el foco principal. El cálculo de colegiatura es opcional."
                     : "Visualiza y (opcionalmente) suma cargos extra al cálculo final."}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="text-xs text-slate-400">
                   Plantel:{" "}
                   <span className="text-slate-200">
                     {plantelResolvido || (requierePlantel ? "Selecciona uno" : "—")}
@@ -759,8 +792,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 </p>
               </div>
 
-              <div className="flex flex-col items-end gap-2">
-                {isRegreso && (
+              <div className="flex items-center gap-2 md:flex-col md:items-end">
+                {isProgramaExtras && (
                   <a
                     href="https://siie-unidep.csweb.mx/"
                     target="_blank"
@@ -780,8 +813,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
+            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -838,7 +871,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             </div>
 
             {extrasAbiertos && (
-              <div className="mt-4">
+              <div className="mt-3">
                 {!plantelResolvido ? (
                   <div className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-4 text-xs text-slate-300">
                     Selecciona un plantel para ver los cargos disponibles.
@@ -848,16 +881,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     No hay cargos disponibles para este plantel.
                   </div>
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="grid gap-2 md:grid-cols-2">
                     {Object.entries(extrasDisponibles).map(([categoria, items]) => (
                       <div
                         key={categoria}
-                        className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-3"
+                        className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-2.5"
                       >
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                           {categoria}
                         </p>
-                        <div className="mt-2 space-y-2">
+                        <div className="mt-1.5 space-y-1.5">
                           {items.map((item) => {
                             const checked = extrasSeleccionados.includes(item.codigo);
                             const disabled = !extrasActivos;
@@ -919,6 +952,25 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 )}
               </div>
             )}
+          </section>
+        )}
+
+        {isAcademia && (
+          <section className="rounded-2xl border border-amber-800/40 bg-amber-950/10 p-3 md:p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+              Línea de negocio, modalidad, plan de estudio y plantel
+            </p>
+            <p className="mt-1 text-xs text-amber-100/80">
+              Datos opcionales para calcular colegiatura base.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {nivelSelect}
+              {modalidadSelect}
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {planSelect}
+              {plantelSelect}
+            </div>
           </section>
         )}
 
