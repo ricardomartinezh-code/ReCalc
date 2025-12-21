@@ -7,13 +7,13 @@ interface BlockedUniversityProps {
 export default function BlockedUniversity({ label }: BlockedUniversityProps) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/50 shadow-2xl px-6 py-7 md:px-10 md:py-9 recalc-fade-up">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/60 shadow-2xl px-6 py-7 md:px-10 md:py-9 backdrop-blur-sm recalc-fade-up">
         <header className="text-center space-y-3">
           <div className="flex flex-col items-center gap-2">
             <img
               src="/branding/logo-recalc.png"
               alt="ReCalc Scholarship"
-              className="h-[152px] sm:h-[173px] md:h-[194px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+              className="h-[136px] sm:h-[154px] md:h-[170px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
               loading="lazy"
             />
           </div>
@@ -43,7 +43,7 @@ export default function BlockedUniversity({ label }: BlockedUniversityProps) {
           <img
             src="/branding/logo-relead.png"
             alt="ReLead"
-            className="h-[72px] w-auto opacity-90"
+            className="h-[64px] w-auto max-w-[200px] opacity-90 object-contain"
             loading="lazy"
           />
           <p className="text-[11px] text-slate-400">

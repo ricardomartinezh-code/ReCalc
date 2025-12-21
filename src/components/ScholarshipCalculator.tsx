@@ -56,6 +56,22 @@ const COSTOS_META: CostosMeta = costosMetaData as CostosMeta;
 const resolveProgramaKey = (p: Programa): ProgramaDataKey =>
   p === "nuevo" ? "nuevo_ingreso" : "reingreso";
 
+const normalizarCargos = (cargos: Record<string, CargoItem[]>) => {
+  const normalizados = Object.entries(cargos)
+    .map(([categoria, items]) => ({
+      categoria,
+      items: [...items]
+        .map((item) => ({
+          codigo: item.codigo,
+          concepto: item.concepto,
+          costo: item.costo,
+        }))
+        .sort((a, b) => a.codigo.localeCompare(b.codigo, "es")),
+    }))
+    .sort((a, b) => a.categoria.localeCompare(b.categoria, "es"));
+  return JSON.stringify(normalizados);
+};
+
 interface ScholarshipCalculatorProps {
   university?: UniversityKey;
   initialProgram?: Programa;
@@ -257,6 +273,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [modalidad, setModalidad] = useState<Modalidad | "">("");
   const [plan, setPlan] = useState<number | "">("");
   const [plantel, setPlantel] = useState<string>("");
+  const [plantelExtras, setPlantelExtras] = useState<string>("");
   const [promedio, setPromedio] = useState<string>("");
 
   const [resultadoMonto, setResultadoMonto] = useState<number | null>(null);
@@ -283,6 +300,47 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [beneficioActivo, setBeneficioActivo] = useState(false);
   const [beneficioPorcentaje, setBeneficioPorcentaje] = useState<number>(10);
 
+  const extrasCatalogo = useMemo(() => {
+    const entries = Object.entries(COSTOS_META.planteles ?? {}).filter(
+      ([, meta]) => meta?.cargos && Object.keys(meta.cargos).length > 0
+    );
+
+    if (entries.length === 0) {
+      return {
+        planteles: [] as string[],
+        baseCargos: null as Record<string, CargoItem[]> | null,
+        hasVariaciones: false,
+      };
+    }
+
+    const contador = new Map<string, number>();
+    const cargosPorClave = new Map<string, Record<string, CargoItem[]>>();
+
+    entries.forEach(([plantelKey, meta]) => {
+      const cargos = meta.cargos as Record<string, CargoItem[]>;
+      const clave = normalizarCargos(cargos);
+      contador.set(clave, (contador.get(clave) ?? 0) + 1);
+      cargosPorClave.set(clave, cargos);
+    });
+
+    let claveBase = "";
+    let maxCount = -1;
+    contador.forEach((count, key) => {
+      if (count > maxCount) {
+        maxCount = count;
+        claveBase = key;
+      }
+    });
+
+    return {
+      planteles: entries
+        .map(([plantelKey]) => plantelKey)
+        .sort((a, b) => a.localeCompare(b, "es")),
+      baseCargos: claveBase ? cargosPorClave.get(claveBase) ?? null : null,
+      hasVariaciones: contador.size > 1,
+    };
+  }, []);
+
   const requierePlantel = useMemo(() => {
     if (!nivel || !modalidad) return false;
     return (
@@ -293,7 +351,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     );
   }, [nivel, modalidad]);
 
-  const plantelResolvido = useMemo(() => {
+  const plantelBaseResolvido = useMemo(() => {
     if (!nivel || !modalidad) return "";
     if (modalidad === "online") return "ONLINE";
     return requierePlantel ? plantel : "";
@@ -301,10 +359,10 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const tierResolvido = useMemo((): Tier | undefined => {
     if (!requierePlantel) return undefined;
-    if (!plantelResolvido) return undefined;
-    const tier = COSTOS_META.planteles?.[plantelResolvido]?.tier ?? null;
+    if (!plantelBaseResolvido) return undefined;
+    const tier = COSTOS_META.planteles?.[plantelBaseResolvido]?.tier ?? null;
     return tier ?? undefined;
-  }, [requierePlantel, plantelResolvido]);
+  }, [requierePlantel, plantelBaseResolvido]);
 
   const nivelesDisponibles = useMemo(() => {
     const set = new Set<Nivel>();
@@ -362,10 +420,52 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return derived.sort((a, b) => a.localeCompare(b, "es"));
   }, [nivel, requierePlantel]);
 
+  const extrasPlantelKey = useMemo(() => {
+    if (!isAcademia) return plantelBaseResolvido;
+    if (plantelExtras) return plantelExtras;
+    return "";
+  }, [isAcademia, plantelBaseResolvido, plantelExtras]);
+
   const extrasDisponibles = useMemo(() => {
-    if (!plantelResolvido) return null;
-    return COSTOS_META.planteles?.[plantelResolvido]?.cargos ?? null;
-  }, [plantelResolvido]);
+    if (!isProgramaExtras) return null;
+    if (isAcademia) {
+      if (extrasPlantelKey) {
+        return COSTOS_META.planteles?.[extrasPlantelKey]?.cargos ?? null;
+      }
+      return extrasCatalogo.baseCargos ?? null;
+    }
+    if (!plantelBaseResolvido) return null;
+    return COSTOS_META.planteles?.[plantelBaseResolvido]?.cargos ?? null;
+  }, [
+    extrasCatalogo.baseCargos,
+    extrasPlantelKey,
+    isAcademia,
+    isProgramaExtras,
+    plantelBaseResolvido,
+  ]);
+
+  const extrasOrdenados = useMemo(() => {
+    if (!extrasDisponibles) {
+      return { principales: [], compactos: [] } as {
+        principales: { categoria: string; items: CargoItem[]; count: number }[];
+        compactos: { categoria: string; items: CargoItem[]; count: number }[];
+      };
+    }
+    const entries = Object.entries(extrasDisponibles).map(
+      ([categoria, items]) => ({
+        categoria,
+        items,
+        count: items.length,
+      })
+    );
+    entries.sort(
+      (a, b) => b.count - a.count || a.categoria.localeCompare(b.categoria, "es")
+    );
+    return {
+      principales: entries.filter((entry) => entry.count > 4),
+      compactos: entries.filter((entry) => entry.count <= 4),
+    };
+  }, [extrasDisponibles]);
 
   const extrasTotal = useMemo(() => {
     if (!isProgramaExtras || !extrasActivos || !extrasDisponibles) return 0;
@@ -381,6 +481,24 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const beneficiosDisponibles = [10, 15, 20, 25, 30];
 
+  const mostrarSelectorExtrasPlantel =
+    isAcademia && extrasCatalogo.hasVariaciones;
+  const extrasPlantelOpciones = mostrarSelectorExtrasPlantel
+    ? ["Base general", ...extrasCatalogo.planteles]
+    : [];
+  const extrasPlantelEtiqueta = isAcademia
+    ? extrasPlantelKey ||
+      (mostrarSelectorExtrasPlantel ? "Base general" : "General")
+    : plantelBaseResolvido || (requierePlantel ? "Selecciona uno" : "—");
+  const extrasToggleDisabled =
+    !extrasDisponibles || (!isAcademia && !plantelBaseResolvido);
+  const extrasFaltaPlantel =
+    !isAcademia && requierePlantel && !plantelBaseResolvido;
+
+  useEffect(() => {
+    setExtrasSeleccionados([]);
+  }, [extrasPlantelKey]);
+
   useEffect(() => {
     if (!initialProgram) return;
     setPrograma(initialProgram);
@@ -390,6 +508,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setExtrasSeleccionados([]);
     setBeneficioActivo(false);
     setBeneficioPorcentaje(10);
+    setPlantelExtras("");
   }, [initialProgram]);
 
   useEffect(() => {
@@ -546,6 +665,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setModalidad("");
     setPlan("");
     setPlantel("");
+    setPlantelExtras("");
     setPromedio("");
     setResultadoMonto(null);
     setResultadoPorcentaje(null);
@@ -590,6 +710,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         setExtrasSeleccionados([]);
         setBeneficioActivo(false);
         setBeneficioPorcentaje(10);
+        setPlantelExtras("");
       }}
       placeholder="Selecciona programa"
       accent={accent}
@@ -679,7 +800,15 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       id="plantel"
       openId={openSelectId}
       setOpenId={setOpenSelectId}
-      label={requierePlantel ? "Plantel" : "Plantel (no aplica)"}
+      label={
+        requierePlantel
+          ? isAcademia
+            ? "Plantel base"
+            : "Plantel"
+          : isAcademia
+            ? "Plantel base (no aplica)"
+            : "Plantel (no aplica)"
+      }
       options={plantelesDisponibles}
       value={plantel}
       onChange={(val) => {
@@ -690,7 +819,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       }}
       placeholder={
         requierePlantel
-          ? "Selecciona plantel"
+          ? isAcademia
+            ? "Selecciona plantel base"
+            : "Selecciona plantel"
           : "No es necesario para este nivel o modalidad"
       }
       disabled={!requierePlantel || plantelesDisponibles.length === 0}
@@ -709,7 +840,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       }`}
     >
         <div
-          className={`w-full max-w-4xl rounded-2xl border bg-slate-900/80 shadow-2xl px-5 py-6 md:px-8 md:py-8 space-y-6 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4 ${
+          className={`w-full max-w-4xl rounded-2xl border bg-slate-900/80 shadow-2xl px-5 py-6 md:px-8 md:py-8 space-y-6 backdrop-blur-sm recalc-fade-up [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-4 [@media(max-height:700px)]:space-y-4 ${
             isRegreso
               ? "border-violet-800/50 shadow-violet-500/10"
               : "border-slate-800 shadow-emerald-500/10"
@@ -721,13 +852,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 <img
                   src="/branding/logo-recalc.png"
                   alt="ReCalc Scholarship"
-                  className="h-[130px] sm:h-[151px] md:h-[173px] w-auto max-w-[520px] md:max-w-[640px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+                  className="h-[118px] sm:h-[138px] md:h-[152px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
                   loading="lazy"
                 />
               </div>
 
               {university === "unidep" && (
-                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[126px] md:top-[150px]">
+                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[114px] md:top-[132px]">
                   <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
                     UNIDEP
                   </span>
@@ -775,21 +906,43 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             }`}
           >
             <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  {isAcademia ? "Academia · Cargos adicionales" : "Regresos · Costos adicionales"}
+                  {isAcademia
+                    ? "Academia · Costos académicos"
+                    : "Regresos · Costos adicionales"}
                 </p>
                 <p className="mt-1 text-sm text-slate-200">
                   {isAcademia
-                    ? "Estos cargos son el foco principal. El cálculo de colegiatura es opcional."
+                    ? "Costos principales de academia. La colegiatura base es opcional."
                     : "Visualiza y (opcionalmente) suma cargos extra al cálculo final."}
                 </p>
-                <p className="text-xs text-slate-400">
-                  Plantel:{" "}
-                  <span className="text-slate-200">
-                    {plantelResolvido || (requierePlantel ? "Selecciona uno" : "—")}
-                  </span>
-                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <span>Plantel costos:</span>
+                  <span className="text-slate-200">{extrasPlantelEtiqueta}</span>
+                </div>
+                {mostrarSelectorExtrasPlantel && (
+                  <div className="max-w-xs">
+                    <SearchableSelect
+                      id="plantel-extras"
+                      openId={openSelectId}
+                      setOpenId={setOpenSelectId}
+                      label="Plantel para costos"
+                      options={extrasPlantelOpciones}
+                      value={plantelExtras}
+                      onChange={(val) => {
+                        const next = val === "Base general" ? "" : val;
+                        setPlantelExtras(next);
+                        setResultadoMonto(null);
+                        setResultadoPorcentaje(null);
+                        setExtrasSeleccionados([]);
+                      }}
+                      placeholder="Base general"
+                      disabled={!extrasPlantelOpciones.length}
+                      accent={extrasTone}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 md:flex-col md:items-end">
@@ -818,7 +971,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (!plantelResolvido || !extrasDisponibles) return;
+                    if (extrasToggleDisabled) return;
                     setResultadoMonto(null);
                     setResultadoPorcentaje(null);
                     setExtrasActivos((prev) => {
@@ -831,7 +984,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                       return next;
                     });
                   }}
-                  disabled={!plantelResolvido || !extrasDisponibles}
+                  disabled={extrasToggleDisabled}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
                     extrasActivos
                       ? extrasTone === "amber"
@@ -839,7 +992,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                         : "border-violet-300/60 bg-violet-500/80"
                       : "border-slate-600 bg-slate-800/70"
                   } ${
-                    !plantelResolvido || !extrasDisponibles
+                    extrasToggleDisabled
                       ? "cursor-not-allowed opacity-50"
                       : "cursor-pointer"
                   }`}
@@ -853,7 +1006,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 </button>
                 <div>
                   <p className="text-xs font-semibold text-slate-200">
-                    Activar costos adicionales
+                    {isAcademia
+                      ? "Activar costos académicos"
+                      : "Activar costos adicionales"}
                   </p>
                 </div>
               </div>
@@ -872,20 +1027,20 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
             {extrasAbiertos && (
               <div className="mt-3">
-                {!plantelResolvido ? (
+                {extrasFaltaPlantel ? (
                   <div className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-4 text-xs text-slate-300">
                     Selecciona un plantel para ver los cargos disponibles.
                   </div>
                 ) : !extrasDisponibles ? (
                   <div className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-4 text-xs text-slate-300">
-                    No hay cargos disponibles para este plantel.
+                    No hay cargos disponibles para esta selección.
                   </div>
                 ) : (
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {Object.entries(extrasDisponibles).map(([categoria, items]) => (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {extrasOrdenados.principales.map(({ categoria, items }) => (
                       <div
                         key={categoria}
-                        className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-2.5"
+                        className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-2.5 transition-colors hover:border-slate-700/80"
                       >
                         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                           {categoria}
@@ -897,7 +1052,73 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                             return (
                               <label
                                 key={item.codigo}
-                                className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition ${
+                                className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition-colors ${
+                                  checked
+                                    ? extrasTone === "amber"
+                                      ? "border-amber-500/50 bg-amber-500/10"
+                                      : "border-violet-500/50 bg-violet-500/10"
+                                    : "border-slate-800/70 bg-slate-900/20"
+                                } ${disabled ? "opacity-60" : "hover:bg-slate-900/40 cursor-pointer"}`}
+                              >
+                                <span className="flex items-start gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className={`mt-0.5 ${
+                                      extrasTone === "amber"
+                                        ? "accent-amber-500"
+                                        : "accent-violet-500"
+                                    }`}
+                                    checked={checked}
+                                    disabled={disabled}
+                                    onChange={() => {
+                                      setExtrasSeleccionados((prev) => {
+                                        if (prev.includes(item.codigo)) {
+                                          return prev.filter((c) => c !== item.codigo);
+                                        }
+                                        return [...prev, item.codigo];
+                                      });
+                                      setResultadoMonto(null);
+                                      setResultadoPorcentaje(null);
+                                    }}
+                                  />
+                                  <span>
+                                    <span className="block text-xs text-slate-100">
+                                      {item.concepto}
+                                    </span>
+                                    <span className="block text-[11px] text-slate-400">
+                                      Código: {item.codigo}
+                                    </span>
+                                  </span>
+                                </span>
+                                <span className="text-xs font-semibold text-slate-50">
+                                  {item.costo.toLocaleString("es-MX", {
+                                    style: "currency",
+                                    currency: "MXN",
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {extrasOrdenados.compactos.map(({ categoria, items }) => (
+                      <div
+                        key={categoria}
+                        className="rounded-xl border border-slate-800/70 bg-slate-950/30 p-2.5 transition-colors hover:border-slate-700/80 md:col-span-2"
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                          {categoria}
+                        </p>
+                        <div className="mt-1.5 space-y-1.5">
+                          {items.map((item) => {
+                            const checked = extrasSeleccionados.includes(item.codigo);
+                            const disabled = !extrasActivos;
+                            return (
+                              <label
+                                key={item.codigo}
+                                className={`flex items-start justify-between gap-3 rounded-lg border px-3 py-2 transition-colors ${
                                   checked
                                     ? extrasTone === "amber"
                                       ? "border-amber-500/50 bg-amber-500/10"
@@ -957,80 +1178,82 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
         {isAcademia && (
           <section className="rounded-2xl border border-amber-800/40 bg-amber-950/10 p-3 md:p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
-              Línea de negocio, modalidad, plan de estudio y plantel
-            </p>
-            <p className="mt-1 text-xs text-amber-100/80">
-              Datos opcionales para calcular colegiatura base.
-            </p>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                Colegiatura base
+              </p>
+              <p className="text-[11px] text-amber-100/80">
+                Opcional. Define línea, modalidad, plan y plantel base.
+              </p>
+            </div>
+            <div className="mt-2 grid gap-3 md:grid-cols-2">
               {nivelSelect}
               {modalidadSelect}
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
               {planSelect}
               {plantelSelect}
             </div>
           </section>
         )}
 
-        <section className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4 md:p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                Beneficios adicionales
-              </p>
-              <p className="mt-1 text-sm text-slate-200">
-                Descuento extra sobre colegiatura. No aplica a costos adicionales.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setBeneficioActivo((prev) => !prev);
-                setResultadoMonto(null);
-                setResultadoPorcentaje(null);
-              }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
-                beneficioActivo
-                  ? accent === "violet"
-                    ? "border-violet-300/60 bg-violet-500/80"
-                    : accent === "amber"
-                      ? "border-amber-300/60 bg-amber-500/80"
-                      : "border-emerald-300/60 bg-emerald-500/80"
-                  : "border-slate-600 bg-slate-800/70"
-              }`}
-              aria-pressed={beneficioActivo}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-slate-50 shadow transition ${
-                  beneficioActivo ? "translate-x-5" : "translate-x-1"
+        {!isRegreso && (
+          <section className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4 md:p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                  Beneficios adicionales
+                </p>
+                <p className="mt-1 text-sm text-slate-200">
+                  Descuento extra sobre colegiatura. No aplica a costos adicionales.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBeneficioActivo((prev) => !prev);
+                  setResultadoMonto(null);
+                  setResultadoPorcentaje(null);
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
+                  beneficioActivo
+                    ? accent === "violet"
+                      ? "border-violet-300/60 bg-violet-500/80"
+                      : accent === "amber"
+                        ? "border-amber-300/60 bg-amber-500/80"
+                        : "border-emerald-300/60 bg-emerald-500/80"
+                    : "border-slate-600 bg-slate-800/70"
                 }`}
-              />
-            </button>
-          </div>
+                aria-pressed={beneficioActivo}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-slate-50 shadow transition ${
+                    beneficioActivo ? "translate-x-5" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <SearchableSelect
-              id="beneficio"
-              openId={openSelectId}
-              setOpenId={setOpenSelectId}
-              label="Porcentaje extra"
-              options={beneficiosDisponibles.map((b) => `${b}%`)}
-              value={beneficioActivo ? `${beneficioPorcentaje}%` : ""}
-              onChange={(val) => {
-                const num = Number(val.replace("%", "").trim());
-                setBeneficioPorcentaje(Number.isNaN(num) ? 10 : num);
-                setResultadoMonto(null);
-                setResultadoPorcentaje(null);
-                setError("");
-              }}
-              placeholder="Selecciona porcentaje"
-              disabled={!beneficioActivo}
-              accent={accent}
-            />
-          </div>
-        </section>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <SearchableSelect
+                id="beneficio"
+                openId={openSelectId}
+                setOpenId={setOpenSelectId}
+                label="Porcentaje extra"
+                options={beneficiosDisponibles.map((b) => `${b}%`)}
+                value={beneficioActivo ? `${beneficioPorcentaje}%` : ""}
+                onChange={(val) => {
+                  const num = Number(val.replace("%", "").trim());
+                  setBeneficioPorcentaje(Number.isNaN(num) ? 10 : num);
+                  setResultadoMonto(null);
+                  setResultadoPorcentaje(null);
+                  setError("");
+                }}
+                placeholder="Selecciona porcentaje"
+                disabled={!beneficioActivo}
+                accent={accent}
+              />
+            </div>
+          </section>
+        )}
 
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)] items-end">
           <div className="space-y-1">
@@ -1250,7 +1473,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           <img
             src={university === "unidep" ? "/branding/logo-unidep.png" : "/branding/logo-relead.png"}
             alt={university === "unidep" ? "UNIDEP" : "ReLead"}
-            className="h-[80px] sm:h-[96px] w-auto opacity-90 object-contain"
+            className="h-[70px] sm:h-[84px] w-auto max-w-[240px] opacity-90 object-contain"
             loading="lazy"
           />
           <p>Powered by ReLead © {new Date().getFullYear()}</p>
