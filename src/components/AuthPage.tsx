@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { UNIVERSITY_DOMAINS, UNIVERSITY_LABELS } from "../data/authConfig";
 import { getEmailDomain, setStoredSession } from "../utils/auth";
 
@@ -12,13 +12,29 @@ const PASSWORD_MIN_LENGTH = 6;
 
 export default function AuthPage({ slug }: AuthPageProps) {
   const normalizedSlug = (slug ?? "").toLowerCase();
-  const allowedDomains = UNIVERSITY_DOMAINS[
-    normalizedSlug as keyof typeof UNIVERSITY_DOMAINS
-  ];
+  const initialSlug =
+    normalizedSlug && UNIVERSITY_DOMAINS[normalizedSlug as keyof typeof UNIVERSITY_DOMAINS]
+      ? normalizedSlug
+      : "";
+  const [activeSlug, setActiveSlug] = useState(initialSlug);
+
+  useEffect(() => {
+    if (
+      normalizedSlug &&
+      UNIVERSITY_DOMAINS[normalizedSlug as keyof typeof UNIVERSITY_DOMAINS] &&
+      normalizedSlug !== activeSlug
+    ) {
+      setActiveSlug(normalizedSlug);
+    }
+  }, [activeSlug, normalizedSlug]);
+
+  const allowedDomains = activeSlug
+    ? UNIVERSITY_DOMAINS[activeSlug as keyof typeof UNIVERSITY_DOMAINS]
+    : undefined;
   const label =
-    normalizedSlug && allowedDomains
-      ? UNIVERSITY_LABELS[normalizedSlug as keyof typeof UNIVERSITY_LABELS]
-      : normalizedSlug.toUpperCase();
+    activeSlug && allowedDomains
+      ? UNIVERSITY_LABELS[activeSlug as keyof typeof UNIVERSITY_LABELS]
+      : "";
 
   const domainHint = useMemo(() => {
     if (!allowedDomains?.length) return "";
@@ -32,6 +48,14 @@ export default function AuthPage({ slug }: AuthPageProps) {
   const [loading, setLoading] = useState(false);
 
   const isValidSlug = Boolean(allowedDomains);
+  const availableUniversities = useMemo(
+    () =>
+      Object.keys(UNIVERSITY_DOMAINS).map((key) => ({
+        key,
+        label: UNIVERSITY_LABELS[key as keyof typeof UNIVERSITY_LABELS] ?? key,
+      })),
+    []
+  );
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,7 +94,7 @@ export default function AuthPage({ slug }: AuthPageProps) {
         body: JSON.stringify({
           email: trimmedEmail,
           password: trimmedPassword,
-          slug: normalizedSlug,
+          slug: activeSlug,
         }),
       });
 
@@ -84,8 +108,8 @@ export default function AuthPage({ slug }: AuthPageProps) {
         return;
       }
 
-      setStoredSession({ email: data.email ?? trimmedEmail, slug: normalizedSlug });
-      window.location.assign(`/${normalizedSlug}`);
+      setStoredSession({ email: data.email ?? trimmedEmail, slug: activeSlug });
+      window.location.assign(`/${activeSlug}`);
     } catch (err) {
       setError("No fue posible conectar con el servidor.");
     } finally {
@@ -116,6 +140,31 @@ export default function AuthPage({ slug }: AuthPageProps) {
         </header>
 
         <div className="mt-8 grid gap-6">
+          {!isValidSlug ? (
+            <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 text-sm text-slate-300">
+              <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
+                Selecciona universidad
+              </p>
+              <select
+                value={activeSlug}
+                onChange={(event) => {
+                  setActiveSlug(event.target.value);
+                  setError("");
+                }}
+                className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950"
+              >
+                <option value="" disabled>
+                  Elige una opción
+                </option>
+                {availableUniversities.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <div className="flex justify-center gap-3">
             <button
               type="button"

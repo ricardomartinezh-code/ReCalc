@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import costosFlatRulesData from "../data/costos_2026_flat_rules.json";
 import costosMetaData from "../data/costos_2026_meta.json";
+import { clearStoredSession } from "../utils/auth";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
@@ -317,6 +318,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
   const [beneficioActivo, setBeneficioActivo] = useState(false);
   const [beneficioPorcentaje, setBeneficioPorcentaje] = useState<number>(10);
+
+  const handleLogout = () => {
+    clearStoredSession();
+    window.location.assign("/");
+  };
 
   const extrasCatalogo = useMemo(() => {
     const entries = Object.entries(COSTOS_META.planteles ?? {}).filter(
@@ -883,10 +889,17 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               </div>
 
               {university === "unidep" && (
-                <div className="mt-2 flex justify-end sm:mt-0 sm:absolute sm:right-0 sm:top-[114px] md:top-[132px]">
+                <div className="mt-2 flex flex-col items-end gap-2 sm:mt-0 sm:absolute sm:right-0 sm:top-[114px] md:top-[132px]">
                   <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
                     UNIDEP
                   </span>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200"
+                  >
+                    Cerrar sesión
+                  </button>
                 </div>
               )}
             </div>
