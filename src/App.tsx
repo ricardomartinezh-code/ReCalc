@@ -29,18 +29,24 @@ function App() {
   const [topSegment, subSegment] = getSegments(window.location.pathname).map((s) =>
     s.toLowerCase()
   );
+  const session = getStoredSession();
+  const emailDomain = session ? getEmailDomain(session.email) : "";
+  const hasUnidepAccess =
+    Boolean(session) &&
+    session.slug === "unidep" &&
+    UNIVERSITY_DOMAINS.unidep.includes(emailDomain);
+
+  if (!topSegment) {
+    if (!hasUnidepAccess) {
+      return <RedirectToAuth slug="unidep" />;
+    }
+    return <LandingPage />;
+  }
   if (topSegment === "auth") {
     return <AuthPage slug={subSegment} />;
   }
   if (topSegment === "unidep") {
-    const session = getStoredSession();
-    const allowedDomains = UNIVERSITY_DOMAINS.unidep;
-    const emailDomain = session ? getEmailDomain(session.email) : "";
-    const hasAccess =
-      Boolean(session) &&
-      session.slug === "unidep" &&
-      allowedDomains.includes(emailDomain);
-    if (!hasAccess) {
+    if (!hasUnidepAccess) {
       return <RedirectToAuth slug="unidep" />;
     }
     const initialProgram =
