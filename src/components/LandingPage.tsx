@@ -9,7 +9,7 @@ type UniversityOption = {
 };
 
 const UNIVERSITIES: UniversityOption[] = [
-  { key: "unidep", label: "UNIDEP", path: "/unidep" },
+  { key: "unidep", label: "UNIDEP", path: "/auth/unidep" },
   { key: "utc", label: "UTC (bloqueado)", path: "/utc" },
   { key: "ula", label: "ULA (bloqueado)", path: "/ula" },
 ];
