@@ -38,7 +38,16 @@ export default function AuthPage({ slug }: AuthPageProps) {
 
   const domainHint = useMemo(() => {
     if (!allowedDomains?.length) return "";
-    return allowedDomains.map((domain) => `@${domain}`).join(" o ");
+    const entries = allowedDomains
+      .map((domain) => {
+        const normalized = domain.trim().toLowerCase();
+        if (!normalized) return "";
+        const cleaned = normalized.startsWith("@") ? normalized.slice(1) : normalized;
+        return cleaned.startsWith("*.") ? cleaned.slice(2) : cleaned;
+      })
+      .filter(Boolean);
+    const unique = Array.from(new Set(entries));
+    return unique.map((domain) => `@${domain}`).join(" o ");
   }, [allowedDomains]);
 
   const [mode, setMode] = useState<AuthMode>("signin");

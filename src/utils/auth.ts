@@ -7,19 +7,25 @@ const STORAGE_KEY = "recalc_auth_session";
 
 export function getEmailDomain(email: string): string {
   const parts = email.trim().toLowerCase().split("@");
-  return parts.length === 2 ? parts[1] : "";
+  if (parts.length !== 2) return "";
+  const domain = parts[1];
+  return domain ? domain : "";
 }
 
 export function isAllowedDomain(domain: string, allowedDomains: readonly string[]) {
   const normalized = domain.trim().toLowerCase();
   if (!normalized) return false;
   return allowedDomains.some((entry) => {
-    const allowed = entry.toLowerCase();
-    if (allowed.startsWith("*.")) {
-      const base = allowed.slice(2);
-      return normalized !== base && normalized.endsWith(`.${base}`);
+    const allowed = entry.trim().toLowerCase();
+    if (!allowed) return false;
+    const normalizedAllowed = allowed.startsWith("@") ? allowed.slice(1) : allowed;
+    if (!normalizedAllowed) return false;
+    if (normalizedAllowed.startsWith("*.")) {
+      const base = normalizedAllowed.slice(2);
+      if (!base) return false;
+      return normalized === base || normalized.endsWith(`.${base}`);
     }
-    return normalized === allowed;
+    return normalized === normalizedAllowed;
   });
 }
 

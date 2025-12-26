@@ -41,3 +41,19 @@ test("UI domain access rules match expected UNIDEP domains", () => {
     assert.equal(isAllowedUiDomain(domain, domains), false, `${domain} should be denied`);
   }
 });
+
+test("Domain rules support @ prefixes and wildcard base domains", () => {
+  const customDomains = ["@example.edu", "*.example.org"];
+
+  const shouldAllow = ["example.edu", "example.org", "mail.example.org"];
+  const shouldDeny = ["example.com", "example.org.evil.com"];
+
+  for (const domain of shouldAllow) {
+    assert.equal(isAllowedApiDomain(domain, customDomains), true, `API should allow ${domain}`);
+    assert.equal(isAllowedUiDomain(domain, customDomains), true, `UI should allow ${domain}`);
+  }
+  for (const domain of shouldDeny) {
+    assert.equal(isAllowedApiDomain(domain, customDomains), false, `API should deny ${domain}`);
+    assert.equal(isAllowedUiDomain(domain, customDomains), false, `UI should deny ${domain}`);
+  }
+});

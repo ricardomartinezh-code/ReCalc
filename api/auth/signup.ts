@@ -1,4 +1,4 @@
-import { UNIVERSITY_DOMAINS, isAllowedDomain } from "./config";
+import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "./config";
 import { getSql } from "./db";
 import { createSalt, hashPassword } from "./password";
 import { sendJson, setCors } from "./response";
@@ -43,7 +43,11 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const domain = email.split("@")[1] ?? "";
+  const domain = getEmailDomain(email);
+  if (!domain) {
+    sendJson(res, 400, { error: "Correo invÃ¡lido." });
+    return;
+  }
   if (!isAllowedDomain(domain, allowedDomains)) {
     sendJson(res, 403, { error: "Dominio no permitido para esta universidad." });
     return;
