@@ -68,7 +68,9 @@ export default async function handler(req: any, res: any) {
       RETURNING email;
     `;
 
-    const rows = Array.isArray(result) ? result : result.rows ?? [];
+    const rows = (Array.isArray(result) ? result : result.rows ?? []) as Array<{
+      email: string;
+    }>;
 
     if (!rows.length) {
       sendJson(res, 409, { error: "El correo ya está registrado." });
