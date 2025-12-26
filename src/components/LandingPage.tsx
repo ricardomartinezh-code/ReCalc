@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { UNIVERSITY_DOMAINS } from "../data/authConfig";
-import { getEmailDomain, getStoredSession, isAllowedDomain } from "../utils/auth";
+import { useNavigate } from "react-router-dom";
+import { useUser } from "@stackframe/react";
+import { setSelectedSlug } from "../utils/selection";
 
 type UniversityKey = "unidep" | "utc" | "ula";
 
@@ -17,12 +18,8 @@ const UNIVERSITIES: UniversityOption[] = [
 
 export default function LandingPage() {
   const [selected, setSelected] = useState<UniversityKey | "">("");
-  const session = getStoredSession();
-  const emailDomain = session ? getEmailDomain(session.email) : "";
-  const hasUnidepAccess =
-    Boolean(session) &&
-    session.slug === "unidep" &&
-    isAllowedDomain(emailDomain, UNIVERSITY_DOMAINS.unidep);
+  const navigate = useNavigate();
+  const user = useUser({ or: "return-null" });
 
   const selectedUniversity = useMemo(
     () => UNIVERSITIES.find((u) => u.key === selected) ?? null,
@@ -31,19 +28,21 @@ export default function LandingPage() {
 
   const start = () => {
     if (!selectedUniversity) return;
-    if (selectedUniversity.key === "unidep" && hasUnidepAccess) {
-      window.location.assign("/unidep");
+    if (selectedUniversity.key === "unidep" && user) {
+      setSelectedSlug(selectedUniversity.key);
+      navigate("/unidep");
       return;
     }
     if (selectedUniversity.key === "utc") {
-      window.location.assign("/utc");
+      navigate("/utc");
       return;
     }
     if (selectedUniversity.key === "ula") {
-      window.location.assign("/ula");
+      navigate("/ula");
       return;
     }
-    window.location.assign(`/auth/${selectedUniversity.key}`);
+    setSelectedSlug(selectedUniversity.key);
+    navigate("/auth/sign-in");
   };
 
   return (

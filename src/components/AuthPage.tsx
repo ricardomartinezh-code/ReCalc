@@ -1,130 +1,51 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { UNIVERSITY_DOMAINS, UNIVERSITY_LABELS } from "../data/authConfig";
-import { getEmailDomain, isAllowedDomain, setStoredSession } from "../utils/auth";
+import { SignIn, SignUp, useUser } from "@stackframe/react";
+import { useNavigate, useParams } from "react-router-dom";
+import { UNIVERSITY_LABELS } from "../data/authConfig";
+import { getSelectedSlug, setSelectedSlug } from "../utils/selection";
 
-type AuthMode = "signin" | "signup";
+type AuthMode = "sign-in" | "sign-up";
 
-type AuthPageProps = {
-  slug?: string;
+type UniversityOption = {
+  key: keyof typeof UNIVERSITY_LABELS;
+  label: string;
 };
 
-const PASSWORD_MIN_LENGTH = 6;
+const UNIVERSITIES: UniversityOption[] = Object.entries(UNIVERSITY_LABELS).map(
+  ([key, label]) => ({ key: key as keyof typeof UNIVERSITY_LABELS, label })
+);
 
-export default function AuthPage({ slug }: AuthPageProps) {
-  const normalizedSlug = (slug ?? "").toLowerCase();
-  const initialSlug =
-    normalizedSlug && UNIVERSITY_DOMAINS[normalizedSlug as keyof typeof UNIVERSITY_DOMAINS]
-      ? normalizedSlug
-      : "";
-  const [activeSlug, setActiveSlug] = useState(initialSlug);
+const normalizeSlug = (slug: string) => slug.trim().toLowerCase();
 
-  useEffect(() => {
-    if (
-      normalizedSlug &&
-      UNIVERSITY_DOMAINS[normalizedSlug as keyof typeof UNIVERSITY_DOMAINS] &&
-      normalizedSlug !== activeSlug
-    ) {
-      setActiveSlug(normalizedSlug);
-    }
-  }, [activeSlug, normalizedSlug]);
+const resolveInitialSlug = () => {
+  const stored = normalizeSlug(getSelectedSlug());
+  if (!stored) return "";
+  const keys = Object.keys(UNIVERSITY_LABELS);
+  return keys.includes(stored) ? stored : "";
+};
 
-  const allowedDomains = activeSlug
-    ? UNIVERSITY_DOMAINS[activeSlug as keyof typeof UNIVERSITY_DOMAINS]
-    : undefined;
-  const label =
-    activeSlug && allowedDomains
-      ? UNIVERSITY_LABELS[activeSlug as keyof typeof UNIVERSITY_LABELS]
-      : "";
+export default function AuthPage() {
+  const { mode } = useParams();
+  const [activeSlug, setActiveSlug] = useState(resolveInitialSlug);
+  const navigate = useNavigate();
+  const user = useUser({ or: "return-null" });
 
-  const domainHint = useMemo(() => {
-    if (!allowedDomains?.length) return "";
-    const entries = allowedDomains
-      .map((domain) => {
-        const normalized = domain.trim().toLowerCase();
-        if (!normalized) return "";
-        const cleaned = normalized.startsWith("@") ? normalized.slice(1) : normalized;
-        return cleaned.startsWith("*.") ? cleaned.slice(2) : cleaned;
-      })
-      .filter(Boolean);
-    const unique = Array.from(new Set(entries));
-    return unique.map((domain) => `@${domain}`).join(" o ");
-  }, [allowedDomains]);
-
-  const [mode, setMode] = useState<AuthMode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const isValidSlug = Boolean(allowedDomains);
-  const availableUniversities = useMemo(
-    () =>
-      Object.keys(UNIVERSITY_DOMAINS).map((key) => ({
-        key,
-        label: UNIVERSITY_LABELS[key as keyof typeof UNIVERSITY_LABELS] ?? key,
-      })),
-    []
+  const selectedUniversity = useMemo(
+    () => UNIVERSITIES.find((u) => u.key === activeSlug) ?? null,
+    [activeSlug]
   );
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError("");
+  const authMode: AuthMode = mode === "sign-up" ? "sign-up" : "sign-in";
 
-    if (!isValidSlug) {
-      setError("Universidad no disponible para acceso.");
-      return;
-    }
+  useEffect(() => {
+    if (!activeSlug) return;
+    setSelectedSlug(activeSlug);
+  }, [activeSlug]);
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
-
-    if (!trimmedEmail || !trimmedPassword) {
-      setError("Completa tu correo y contraseña.");
-      return;
-    }
-
-    if (mode === "signup") {
-      const domain = getEmailDomain(trimmedEmail);
-      if (!isAllowedDomain(domain, allowedDomains)) {
-        setError(`Solo se permiten correos ${domainHint}.`);
-        return;
-      }
-      if (trimmedPassword.length < PASSWORD_MIN_LENGTH) {
-        setError("La contraseña debe tener al menos 6 caracteres.");
-        return;
-      }
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          password: trimmedPassword,
-          slug: activeSlug,
-        }),
-      });
-
-      const data = (await response.json().catch(() => ({}))) as {
-        email?: string;
-        error?: string;
-      };
-
-      if (!response.ok) {
-        setError(data?.error ?? "No fue posible autenticar.");
-        return;
-      }
-
-      setStoredSession({ email: data.email ?? trimmedEmail, slug: activeSlug });
-      window.location.assign(`/${activeSlug}`);
-    } catch (err) {
-      setError("No fue posible conectar con el servidor.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!user || !activeSlug) return;
+    navigate(`/${activeSlug}`, { replace: true });
+  }, [activeSlug, navigate, user]);
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
@@ -137,9 +58,9 @@ export default function AuthPage({ slug }: AuthPageProps) {
               className="h-[120px] sm:h-[136px] md:h-[150px] w-auto max-w-[420px] sm:max-w-[480px] md:max-w-[520px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
               loading="lazy"
             />
-            {label ? (
+            {selectedUniversity ? (
               <span className="text-xs uppercase tracking-[0.4em] text-slate-400">
-                {label}
+                {selectedUniversity.label}
               </span>
             ) : null}
           </div>
@@ -149,23 +70,20 @@ export default function AuthPage({ slug }: AuthPageProps) {
         </header>
 
         <div className="mt-8 grid gap-6">
-          {!isValidSlug ? (
+          {!selectedUniversity ? (
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 text-sm text-slate-300">
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
                 Selecciona universidad
               </p>
               <select
                 value={activeSlug}
-                onChange={(event) => {
-                  setActiveSlug(event.target.value);
-                  setError("");
-                }}
+                onChange={(event) => setActiveSlug(event.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
                 <option value="" disabled>
                   Elige una opción
                 </option>
-                {availableUniversities.map((option) => (
+                {UNIVERSITIES.map((option) => (
                   <option key={option.key} value={option.key}>
                     {option.label}
                   </option>
@@ -177,9 +95,9 @@ export default function AuthPage({ slug }: AuthPageProps) {
           <div className="flex justify-center gap-3">
             <button
               type="button"
-              onClick={() => setMode("signin")}
+              onClick={() => navigate("/auth/sign-in")}
               className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide transition border ${
-                mode === "signin"
+                authMode === "sign-in"
                   ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
                   : "border-slate-700 text-slate-300 hover:border-slate-500"
               }`}
@@ -188,9 +106,9 @@ export default function AuthPage({ slug }: AuthPageProps) {
             </button>
             <button
               type="button"
-              onClick={() => setMode("signup")}
+              onClick={() => navigate("/auth/sign-up")}
               className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide transition border ${
-                mode === "signup"
+                authMode === "sign-up"
                   ? "bg-emerald-500/20 border-emerald-400 text-emerald-200"
                   : "border-slate-700 text-slate-300 hover:border-slate-500"
               }`}
@@ -199,70 +117,19 @@ export default function AuthPage({ slug }: AuthPageProps) {
             </button>
           </div>
 
-          <form onSubmit={submit} className="grid gap-4">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
-                Correo institucional
-              </label>
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder={domainHint ? `nombre${domainHint}` : "correo@universidad.edu"}
-                className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950"
-              />
-              {mode === "signup" && domainHint ? (
-                <p className="text-xs text-slate-400">Solo se aceptan {domainHint}.</p>
-              ) : null}
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300 uppercase tracking-wide">
-                Contraseña
-              </label>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-50 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-slate-950"
-              />
-            </div>
-
-            {error ? (
-              <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-                {error}
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`rounded-xl px-5 py-3 text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md transition ${
-                loading
-                  ? "bg-slate-700 text-slate-300 cursor-not-allowed"
-                  : "bg-emerald-500 shadow-emerald-500/30 hover:bg-emerald-400"
-              }`}
-            >
-              {loading
-                ? "Procesando..."
-                : mode === "signin"
-                  ? "Iniciar sesión"
-                  : "Crear cuenta"}
-            </button>
-          </form>
-
-          {!isValidSlug ? (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">
-              La universidad seleccionada no tiene acceso habilitado.
-            </div>
-          ) : null}
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-5 text-sm text-slate-200">
+            {authMode === "sign-up" ? (
+              <SignUp fullPage={false} automaticRedirect={false} />
+            ) : (
+              <SignIn fullPage={false} automaticRedirect={false} />
+            )}
+          </div>
         </div>
 
         <footer className="mt-8 pt-5 border-t border-slate-800/60 flex flex-col items-center justify-center gap-2 text-center">
           <button
             type="button"
-            onClick={() => window.location.assign("/")}
+            onClick={() => navigate("/")}
             className="text-xs uppercase tracking-[0.3em] text-slate-400 hover:text-slate-200 transition"
           >
             Volver al inicio

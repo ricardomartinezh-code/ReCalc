@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useStackApp } from "@stackframe/react";
 import costosFlatRulesData from "../data/costos_2026_flat_rules.json";
 import costosMetaData from "../data/costos_2026_meta.json";
-import { clearStoredSession } from "../utils/auth";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
@@ -286,6 +286,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   university = "unidep",
   initialProgram,
 }) => {
+  const stackApp = useStackApp();
   const [programa, setPrograma] = useState<Programa>(initialProgram ?? "nuevo");
   const [nivel, setNivel] = useState<Nivel | "">("");
   const [modalidad, setModalidad] = useState<Modalidad | "">("");
@@ -320,8 +321,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [beneficioPorcentaje, setBeneficioPorcentaje] = useState<number>(10);
 
   const handleLogout = () => {
-    clearStoredSession();
-    window.location.assign("/");
+    void stackApp.signOut({ redirectUrl: "/" });
   };
 
   const extrasCatalogo = useMemo(() => {
