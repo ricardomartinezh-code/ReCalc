@@ -1,7 +1,7 @@
-import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "./config";
-import { getSql } from "./db";
-import { verifyPassword } from "./password";
-import { sendJson, setCors } from "./response";
+import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "./config.js";
+import { getSql } from "./db.js";
+import { verifyPassword } from "./password.js";
+import { sendJson, setCors } from "./response.js";
 
 function parseBody(req: any) {
   if (!req?.body) return {};
