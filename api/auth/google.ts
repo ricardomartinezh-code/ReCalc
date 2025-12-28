@@ -99,7 +99,9 @@ export default async function handler(req: any, res: any) {
       VALUES (${email}, ${null}, ${null}, ${slug}, 'google')
       RETURNING email;
     `;
-    const inserted = Array.isArray(result) ? result : result.rows ?? [];
+    const inserted = (Array.isArray(result) ? result : result.rows ?? []) as Array<{
+      email: string;
+    }>;
     if (!inserted.length) {
       sendJson(res, 500, { error: "No fue posible registrar el usuario." });
       return;
