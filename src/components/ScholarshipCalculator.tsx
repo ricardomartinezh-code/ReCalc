@@ -877,38 +877,37 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               : "border-slate-800 shadow-emerald-500/10"
           }`}
         >
-	        <header className="text-center">
-            <div className="relative">
-              <div className="flex flex-col items-center gap-2">
-                <img
-                  src="/branding/logo-recalc.png"
-                  alt="ReCalc Scholarship"
-                  className="h-[118px] sm:h-[138px] md:h-[152px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
-                  loading="lazy"
-                />
-              </div>
-
-              {university === "unidep" && (
-                <div className="mt-2 flex flex-col items-end gap-2 sm:mt-0 sm:absolute sm:right-0 sm:top-[114px] md:top-[132px]">
-                  <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
-                    UNIDEP
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200"
-                  >
-                    Cerrar sesión
-                  </button>
-                </div>
-              )}
-            </div>
-	          <p className="text-sm text-slate-300 max-w-2xl mx-auto [@media(max-height:700px)]:hidden">
-	            Selecciona la línea de negocio, modalidad, plan de estudios y plantel.
-	            Luego ingresa el promedio y obtén el porcentaje de beca y el monto mensual
-	            de colegiatura.
-	          </p>
-	        </header>
+                <header className="text-center">
+                  <div className="flex flex-col gap-3 sm:gap-4">
+                    {university === "unidep" && (
+                      <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-end sm:items-center">
+                        <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
+                          UNIDEP
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleLogout}
+                          className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200"
+                        >
+                          Cerrar sesión
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center gap-2">
+                      <img
+                        src="/branding/logo-recalc.png"
+                        alt="ReCalc Scholarship"
+                        className="h-[118px] sm:h-[138px] md:h-[152px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
+                        loading="lazy"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-300 max-w-2xl mx-auto [@media(max-height:700px)]:hidden">
+                    Selecciona la línea de negocio, modalidad, plan de estudios y plantel.
+                    Luego ingresa el promedio y obtén el porcentaje de beca y el monto mensual
+                    de colegiatura.
+                  </p>
+                </header>
 
         {error && (
           <div className="rounded-xl border border-red-500/60 bg-red-500/10 px-4 py-2 text-sm text-red-100">
