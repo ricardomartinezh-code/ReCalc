@@ -59,12 +59,33 @@ export default async function handler(req: any, res: any) {
 
   try {
     const sql = await getSql();
+    const existing = await sql`
+      SELECT email, university_slug, auth_provider
+      FROM users
+      WHERE email = ${email}
+      LIMIT 1;
+    `;
+    const existingRows = (Array.isArray(existing) ? existing : existing.rows ?? []) as Array<{
+      email: string;
+      university_slug: string;
+      auth_provider: string;
+    }>;
+    if (existingRows.length && existingRows[0].university_slug !== slug) {
+      sendJson(res, 403, { error: "Acceso no autorizado para este panel." });
+      return;
+    }
     const salt = createSalt();
     const passwordHash = hashPassword(password, salt);
     const result = await sql`
       INSERT INTO users (email, password_hash, salt, university_slug, auth_provider)
       VALUES (${email}, ${passwordHash}, ${salt}, ${slug}, 'password')
-      ON CONFLICT (email) DO NOTHING
+      ON CONFLICT (email) DO UPDATE
+      SET password_hash = EXCLUDED.password_hash,
+          salt = EXCLUDED.salt,
+          auth_provider = CASE
+            WHEN users.auth_provider IN ('google', 'both') THEN 'both'
+            ELSE 'password'
+          END
       RETURNING email;
     `;
 
@@ -73,7 +94,7 @@ export default async function handler(req: any, res: any) {
     }>;
 
     if (!rows.length) {
-      sendJson(res, 409, { error: "El correo ya está registrado." });
+      sendJson(res, 500, { error: "No fue posible registrar el usuario." });
       return;
     }
 
@@ -82,4 +103,6 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 500, { error: "Error al registrar el usuario." });
   }
 }
+
+
 

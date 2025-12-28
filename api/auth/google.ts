@@ -85,10 +85,12 @@ export default async function handler(req: any, res: any) {
       if (user.university_slug !== slug) {
         sendJson(res, 403, { error: "Acceso no autorizado para este panel." });
         return;
-      }
-      if (user.auth_provider === "password") {
-        sendJson(res, 403, { error: "Usa correo y contrasena para iniciar sesion." });
-        return;
+      }      if (user.auth_provider !== "google" && user.auth_provider !== "both") {
+        await sql`
+          UPDATE users
+          SET auth_provider = 'both'
+          WHERE email = ${email};
+        `;
       }
       sendJson(res, 200, { email: user.email });
       return;
@@ -112,3 +114,6 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 500, { error: "Error al validar credenciales con Google." });
   }
 }
+
+
+

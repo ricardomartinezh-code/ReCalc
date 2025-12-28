@@ -81,7 +81,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (user.auth_provider !== "password" || !user.password_hash || !user.salt) {
+    if (!user.password_hash || !user.salt) {
       sendJson(res, 403, { error: "Usa Google para iniciar sesiÃ³n." });
       return;
     }
@@ -97,4 +97,5 @@ export default async function handler(req: any, res: any) {
     sendJson(res, 500, { error: "Error al validar credenciales." });
   }
 }
+
 
