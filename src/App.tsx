@@ -1,6 +1,8 @@
 import React, { Suspense } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { StackHandler, useUser } from "@stackframe/react";
+import { StackHandler, useStackApp, useUser } from "@stackframe/react";
+import { UNIVERSITY_DOMAINS } from "./data/authConfig";
+import { getEmailDomain, isAllowedDomain } from "./utils/auth";
 import { setSelectedSlug } from "./utils/selection";
 
 const LandingPage = React.lazy(() => import("./components/LandingPage"));
@@ -29,12 +31,34 @@ const RequireAuth: React.FC<{ slug: string; children: React.ReactNode }> = ({
   children,
 }) => {
   const user = useUser({ or: "return-null" });
+  const stackApp = useStackApp();
 
   React.useEffect(() => {
     if (!user) {
       setSelectedSlug(slug);
     }
   }, [slug, user]);
+
+  React.useEffect(() => {
+    if (!user) return;
+    const email = user.primaryEmail ?? "";
+    const domain = getEmailDomain(email);
+    const allowedDomains = UNIVERSITY_DOMAINS[slug as keyof typeof UNIVERSITY_DOMAINS];
+    if (!allowedDomains || !isAllowedDomain(domain, allowedDomains)) {
+      setSelectedSlug(slug);
+      void stackApp.signOut({
+        redirectUrl: `/auth/sign-in?error=domain`,
+      });
+    }
+  }, [slug, stackApp, user]);
+
+  if (user) {
+    const domain = getEmailDomain(user.primaryEmail ?? "");
+    const allowedDomains = UNIVERSITY_DOMAINS[slug as keyof typeof UNIVERSITY_DOMAINS];
+    if (!allowedDomains || !isAllowedDomain(domain, allowedDomains)) {
+      return <Navigate to="/auth/sign-in?error=domain" replace />;
+    }
+  }
 
   if (!user) {
     return <Navigate to="/auth/sign-in" replace />;

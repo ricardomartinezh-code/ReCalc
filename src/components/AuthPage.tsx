@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { SignIn, SignUp, useUser } from "@stackframe/react";
-import { useNavigate, useParams } from "react-router-dom";
-import { UNIVERSITY_LABELS } from "../data/authConfig";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { UNIVERSITY_DOMAINS, UNIVERSITY_LABELS } from "../data/authConfig";
 import { getSelectedSlug, setSelectedSlug } from "../utils/selection";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -28,6 +28,7 @@ export default function AuthPage() {
   const { mode } = useParams();
   const [activeSlug, setActiveSlug] = useState(resolveInitialSlug);
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useUser({ or: "return-null" });
 
   const selectedUniversity = useMemo(
@@ -36,6 +37,14 @@ export default function AuthPage() {
   );
 
   const authMode: AuthMode = mode === "sign-up" ? "sign-up" : "sign-in";
+  const domainHint = useMemo(() => {
+    if (!activeSlug) return "";
+    const domains = UNIVERSITY_DOMAINS[activeSlug as keyof typeof UNIVERSITY_DOMAINS];
+    if (!domains?.length) return "";
+    return domains.map((domain) => `@${domain.replace(/^@/, "")}`).join(" o ");
+  }, [activeSlug]);
+  const searchParams = new URLSearchParams(location.search);
+  const errorParam = searchParams.get("error");
 
   useEffect(() => {
     if (!activeSlug) return;
@@ -48,7 +57,7 @@ export default function AuthPage() {
   }, [activeSlug, navigate, user]);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
+    <div className="recalc-auth min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
       <div className="w-full max-w-2xl lg:max-w-3xl rounded-2xl border border-slate-800 bg-slate-900/60 shadow-2xl px-6 py-7 md:px-10 md:py-9 lg:px-12 lg:py-10 backdrop-blur-sm recalc-fade-up">
         <header className="text-center space-y-3">
           <div className="flex flex-col items-center gap-2">
@@ -70,6 +79,11 @@ export default function AuthPage() {
         </header>
 
         <div className="mt-8 grid gap-6">
+          {errorParam === "domain" ? (
+            <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              Solo se permiten correos {domainHint || "institucionales"}.
+            </div>
+          ) : null}
           {!selectedUniversity ? (
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 text-sm text-slate-300">
               <p className="text-xs uppercase tracking-[0.25em] text-slate-400">
