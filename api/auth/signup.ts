@@ -62,8 +62,8 @@ export default async function handler(req: any, res: any) {
     const salt = createSalt();
     const passwordHash = hashPassword(password, salt);
     const result = await sql`
-      INSERT INTO users (email, password_hash, salt, university_slug)
-      VALUES (${email}, ${passwordHash}, ${salt}, ${slug})
+      INSERT INTO users (email, password_hash, salt, university_slug, auth_provider)
+      VALUES (${email}, ${passwordHash}, ${salt}, ${slug}, 'password')
       ON CONFLICT (email) DO NOTHING
       RETURNING email;
     `;

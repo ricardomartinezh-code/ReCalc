@@ -1,20 +1,22 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { StackProvider } from "@stackframe/react";
-import { TooltipProvider } from "@stackframe/stack-ui";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App";
 import "./index.css";
-import { stackClientApp } from "./stack/client";
+
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
-      <StackProvider app={stackClientApp}>
-        <TooltipProvider>
+      {googleClientId ? (
+        <GoogleOAuthProvider clientId={googleClientId}>
           <App />
-        </TooltipProvider>
-      </StackProvider>
+        </GoogleOAuthProvider>
+      ) : (
+        <App />
+      )}
     </BrowserRouter>
   </React.StrictMode>
 );

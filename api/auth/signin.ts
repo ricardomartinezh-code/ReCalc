@@ -46,7 +46,7 @@ export default async function handler(req: any, res: any) {
   try {
     const sql = await getSql();
     const result = await sql`
-      SELECT email, password_hash, salt, university_slug
+      SELECT email, password_hash, salt, university_slug, auth_provider
       FROM users
       WHERE email = ${email}
       LIMIT 1;
@@ -61,9 +61,10 @@ export default async function handler(req: any, res: any) {
 
     const user = rows[0] as {
       email: string;
-      password_hash: string;
-      salt: string;
+      password_hash: string | null;
+      salt: string | null;
       university_slug: string;
+      auth_provider: string;
     };
 
     if (user.university_slug !== slug) {
@@ -77,6 +78,11 @@ export default async function handler(req: any, res: any) {
     }
     if (!isAllowedDomain(domain, allowedDomains)) {
       sendJson(res, 403, { error: "Dominio no permitido para esta universidad." });
+      return;
+    }
+
+    if (user.auth_provider !== "password" || !user.password_hash || !user.salt) {
+      sendJson(res, 403, { error: "Usa Google para iniciar sesiÃ³n." });
       return;
     }
 

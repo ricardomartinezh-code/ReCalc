@@ -1,9 +1,12 @@
 import React, { Suspense } from "react";
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
-import { StackHandler, useStackApp, useUser } from "@stackframe/react";
 import { UNIVERSITY_DOMAINS } from "./data/authConfig";
-import { getEmailDomain, isAllowedDomain } from "./utils/auth";
-import { setSelectedSlug } from "./utils/selection";
+import {
+  clearStoredSession,
+  getEmailDomain,
+  getStoredSession,
+  isAllowedDomain,
+} from "./utils/auth";
 
 const LandingPage = React.lazy(() => import("./components/LandingPage"));
 const BlockedUniversity = React.lazy(
@@ -13,7 +16,6 @@ const ScholarshipCalculator = React.lazy(
   () => import("./components/ScholarshipCalculator")
 );
 const AuthPage = React.lazy(() => import("./components/AuthPage"));
-const AccountPage = React.lazy(() => import("./components/AccountPage"));
 
 type Programa = "nuevo" | "regreso" | "academia";
 
@@ -30,38 +32,15 @@ const RequireAuth: React.FC<{ slug: string; children: React.ReactNode }> = ({
   slug,
   children,
 }) => {
-  const user = useUser({ or: "return-null" });
-  const stackApp = useStackApp();
+  const session = getStoredSession();
+  const emailDomain = session ? getEmailDomain(session.email) : "";
+  const allowedDomains = UNIVERSITY_DOMAINS[slug as keyof typeof UNIVERSITY_DOMAINS];
+  const hasAccess =
+    Boolean(session) && Boolean(allowedDomains) && isAllowedDomain(emailDomain, allowedDomains);
 
-  React.useEffect(() => {
-    if (!user) {
-      setSelectedSlug(slug);
-    }
-  }, [slug, user]);
-
-  React.useEffect(() => {
-    if (!user) return;
-    const email = user.primaryEmail ?? "";
-    const domain = getEmailDomain(email);
-    const allowedDomains = UNIVERSITY_DOMAINS[slug as keyof typeof UNIVERSITY_DOMAINS];
-    if (!allowedDomains || !isAllowedDomain(domain, allowedDomains)) {
-      setSelectedSlug(slug);
-      void stackApp.signOut({
-        redirectUrl: `/auth/sign-in?error=domain`,
-      });
-    }
-  }, [slug, stackApp, user]);
-
-  if (user) {
-    const domain = getEmailDomain(user.primaryEmail ?? "");
-    const allowedDomains = UNIVERSITY_DOMAINS[slug as keyof typeof UNIVERSITY_DOMAINS];
-    if (!allowedDomains || !isAllowedDomain(domain, allowedDomains)) {
-      return <Navigate to="/auth/sign-in?error=domain" replace />;
-    }
-  }
-
-  if (!user) {
-    return <Navigate to="/auth/sign-in" replace />;
+  if (!hasAccess) {
+    clearStoredSession();
+    return <Navigate to={`/auth/${slug}?error=domain`} replace />;
   }
   return <>{children}</>;
 };
@@ -89,10 +68,7 @@ export default function App() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/auth" element={<Navigate to="/auth/sign-in" replace />} />
-        <Route path="/auth/:mode" element={<AuthPage />} />
-        <Route path="/account/*" element={<AccountPage />} />
-        <Route path="/handler/*" element={<StackHandler fullPage />} />
+        <Route path="/auth/:slug" element={<AuthPage />} />
         <Route path="/unidep" element={<UnidepRoute />} />
         <Route path="/unidep/:program" element={<UnidepRoute />} />
         <Route path="/utc" element={<BlockedUniversity label="UTC" />} />
