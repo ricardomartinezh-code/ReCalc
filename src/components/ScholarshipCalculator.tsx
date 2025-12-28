@@ -895,8 +895,12 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     )}
                     <div className="flex flex-col items-center gap-2">
                       <img
-                        src="/branding/logo-recalc.png"
-                        alt="ReCalc Scholarship"
+                        src={
+                          university === "unidep"
+                            ? "/branding/logo-unidep.png"
+                            : "/branding/logo-relead.png"
+                        }
+                        alt={university === "unidep" ? "UNIDEP" : "ReLead"}
                         className="h-[118px] sm:h-[138px] md:h-[152px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
                         loading="lazy"
                       />
@@ -1510,8 +1514,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
         <footer className="mt-8 border-t border-slate-800/60 pt-5 text-[11px] text-slate-400 flex flex-col items-center justify-center gap-2 text-center">
           <img
-            src={university === "unidep" ? "/branding/logo-unidep.png" : "/branding/logo-relead.png"}
-            alt={university === "unidep" ? "UNIDEP" : "ReLead"}
+            src="/branding/logo-recalc.png"
+            alt="ReCalc Scholarship"
             className="h-[70px] sm:h-[84px] w-auto max-w-[240px] opacity-90 object-contain"
             loading="lazy"
           />
