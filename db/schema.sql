@@ -10,3 +10,10 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS users_university_slug_idx
   ON users (university_slug);
+
+CREATE TABLE IF NOT EXISTS admin_config (
+  slug TEXT PRIMARY KEY,
+  config JSONB NOT NULL,
+  updated_by TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

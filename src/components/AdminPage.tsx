@@ -1,0 +1,669 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
+import costosMetaData from "../data/costos_2026_meta.json";
+import { UNIVERSITY_LABELS } from "../data/authConfig";
+import { isAdminEmail } from "../data/adminAccess";
+import { getStoredSession } from "../utils/auth";
+import {
+  AdminBenefitRule,
+  AdminConfig,
+  AdminPriceOverride,
+  AdminShortcut,
+  clearAdminConfig,
+  fetchAdminConfig,
+  getAdminConfig,
+  saveAdminConfig,
+  updateAdminConfig,
+} from "../utils/adminConfig";
+
+type Modalidad = "presencial" | "online" | "mixta";
+type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
+type Programa = "nuevo" | "regreso" | "academia";
+
+const modalidadOptions: Array<{ value: string; label: string }> = [
+  { value: "*", label: "Todas" },
+  { value: "presencial", label: "Presencial" },
+  { value: "online", label: "Online" },
+  { value: "mixta", label: "Mixta" },
+];
+
+const nivelOptions: Array<{ value: Nivel; label: string }> = [
+  { value: "licenciatura", label: "Licenciatura" },
+  { value: "salud", label: "Salud" },
+  { value: "maestria", label: "Maestria" },
+  { value: "preparatoria", label: "Preparatoria" },
+];
+
+const programaOptions: Array<{ value: Programa; label: string }> = [
+  { value: "nuevo", label: "Nuevo ingreso" },
+  { value: "regreso", label: "Regreso" },
+  { value: "academia", label: "Academia" },
+];
+
+const emptyConfig = (): AdminConfig => ({
+  version: 1,
+  defaults: { beneficio: { rules: [] } },
+  priceOverrides: [],
+  shortcuts: [],
+});
+
+const buildId = () => `rule-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+export default function AdminPage() {
+  const { slug } = useParams();
+  const normalizedSlug = String(slug ?? "").trim().toLowerCase();
+  const session = getStoredSession();
+  const label =
+    UNIVERSITY_LABELS[normalizedSlug as keyof typeof UNIVERSITY_LABELS] ?? "";
+  const isKnownSlug = Boolean(label);
+
+  if (!isKnownSlug) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!session) {
+    return <Navigate to={`/auth/${normalizedSlug}`} replace />;
+  }
+
+  if (session.slug !== normalizedSlug || !isAdminEmail(session.email)) {
+    return <Navigate to="/" replace />;
+  }
+
+  const plantelOptions = useMemo(() => {
+    const entries = Object.keys(costosMetaData.planteles ?? {});
+    return entries.sort((a, b) => a.localeCompare(b, "es"));
+  }, []);
+
+  const [config, setConfig] = useState<AdminConfig>(() =>
+    getAdminConfig(normalizedSlug)
+  );
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const refreshConfig = async () => {
+    if (!normalizedSlug) return;
+    setLoading(true);
+    setError("");
+    try {
+      const remote = await fetchAdminConfig(normalizedSlug);
+      setConfig(remote);
+      saveAdminConfig(normalizedSlug, remote);
+    } catch (err) {
+      setError("No fue posible cargar la configuracion del servidor.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!normalizedSlug) return;
+      setLoading(true);
+      setError("");
+      try {
+        const remote = await fetchAdminConfig(normalizedSlug);
+        if (!active) return;
+        setConfig(remote);
+        saveAdminConfig(normalizedSlug, remote);
+      } catch (err) {
+        if (!active) return;
+        setError("No fue posible cargar la configuracion del servidor.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, [normalizedSlug]);
+
+  const updateBenefitRule = (index: number, patch: Partial<AdminBenefitRule>) =>
+    setConfig((prev) => {
+      const next = [...prev.defaults.beneficio.rules];
+      next[index] = { ...next[index], ...patch };
+      return {
+        ...prev,
+        defaults: {
+          ...prev.defaults,
+          beneficio: { ...prev.defaults.beneficio, rules: next },
+        },
+      };
+    });
+
+  const updateOverride = (index: number, patch: Partial<AdminPriceOverride>) =>
+    setConfig((prev) => {
+      const next = [...prev.priceOverrides];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, priceOverrides: next };
+    });
+
+  const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
+    setConfig((prev) => {
+      const next = [...prev.shortcuts];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, shortcuts: next };
+    });
+
+  const handleSave = async () => {
+    if (!session) return;
+    setSaved(false);
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateAdminConfig(
+        normalizedSlug,
+        session.email,
+        config
+      );
+      setConfig(updated);
+      saveAdminConfig(normalizedSlug, updated);
+      setSaved(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible guardar la configuracion."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!session) return;
+    const empty = emptyConfig();
+    clearAdminConfig(normalizedSlug);
+    setConfig(empty);
+    setSaved(false);
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateAdminConfig(
+        normalizedSlug,
+        session.email,
+        empty
+      );
+      setConfig(updated);
+      saveAdminConfig(normalizedSlug, updated);
+      setSaved(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible reiniciar la configuracion."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 p-4 sm:p-6 md:p-8">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
+        <header className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                Panel admin
+              </p>
+              <h1 className="text-xl font-semibold text-slate-100">
+                {label} · {normalizedSlug}/admin
+              </h1>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={saving || loading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  saving || loading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-slate-700 text-slate-300 hover:border-rose-400/70 hover:text-rose-200"
+                }`}
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={refreshConfig}
+                disabled={saving || loading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  saving || loading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-slate-700 text-slate-300 hover:border-slate-400 hover:text-slate-100"
+                }`}
+              >
+                Actualizar ahora
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || loading}
+                className={`rounded-xl px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-950 shadow-emerald-500/40 transition ${
+                  saving || loading
+                    ? "cursor-not-allowed bg-slate-700 text-slate-300"
+                    : "bg-emerald-500 hover:bg-emerald-400"
+                }`}
+              >
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">
+            Esta configuracion se guarda en el servidor y aplica globalmente.
+          </p>
+          {loading ? (
+            <div className="rounded-xl border border-slate-700/70 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+              Cargando configuracion...
+            </div>
+          ) : null}
+          {error ? (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              {error}
+            </div>
+          ) : null}
+          {saved ? (
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+              Cambios guardados.
+            </div>
+          ) : null}
+        </header>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Descuentos adicionales por defecto
+            </h2>
+            <p className="text-xs text-slate-400">
+              Define el porcentaje y si el descuento extra debe estar activo.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {config.defaults.beneficio.rules.map((rule, index) => (
+              <div
+                key={`${rule.modalidad}-${rule.plantel}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.3fr_.8fr_.8fr_auto]"
+              >
+                <select
+                  value={rule.modalidad}
+                  onChange={(event) =>
+                    updateBenefitRule(index, { modalidad: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {modalidadOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={rule.plantel}
+                  onChange={(event) =>
+                    updateBenefitRule(index, { plantel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="*">Todos los planteles</option>
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={rule.activo ? "si" : "no"}
+                  onChange={(event) =>
+                    updateBenefitRule(index, {
+                      activo: event.target.value === "si",
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="si">Activo</option>
+                  <option value="no">Inactivo</option>
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={rule.porcentaje}
+                  onChange={(event) =>
+                    updateBenefitRule(index, {
+                      porcentaje: Number(event.target.value || 0),
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="%"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      defaults: {
+                        ...prev.defaults,
+                        beneficio: {
+                          ...prev.defaults.beneficio,
+                          rules: prev.defaults.beneficio.rules.filter(
+                            (_, idx) => idx !== index
+                          ),
+                        },
+                      },
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setConfig((prev) => ({
+                  ...prev,
+                  defaults: {
+                    ...prev.defaults,
+                    beneficio: {
+                      ...prev.defaults.beneficio,
+                      rules: [
+                        ...prev.defaults.beneficio.rules,
+                        {
+                          modalidad: "*",
+                          plantel: "*",
+                          activo: false,
+                          porcentaje: 10,
+                        },
+                      ],
+                    },
+                  },
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar regla
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Correcciones rapidas de precio
+            </h2>
+            <p className="text-xs text-slate-400">
+              Sobrescribe precio lista para combinaciones especificas.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {config.priceOverrides.map((override, index) => (
+              <div
+                key={`${override.programa}-${override.nivel}-${override.plan}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1fr_.7fr_1.3fr_1fr_auto]"
+              >
+                <select
+                  value={override.programa}
+                  onChange={(event) =>
+                    updateOverride(index, {
+                      programa: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {programaOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={override.nivel}
+                  onChange={(event) =>
+                    updateOverride(index, { nivel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {nivelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={override.modalidad}
+                  onChange={(event) =>
+                    updateOverride(index, { modalidad: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {modalidadOptions
+                    .filter((option) => option.value !== "*")
+                    .map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={override.plan}
+                  onChange={(event) =>
+                    updateOverride(index, {
+                      plan: Number(event.target.value || 0),
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Plan"
+                />
+                <select
+                  value={override.plantel}
+                  onChange={(event) =>
+                    updateOverride(index, { plantel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="*">Todos los planteles</option>
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  value={override.precioLista}
+                  onChange={(event) =>
+                    updateOverride(index, {
+                      precioLista: Number(event.target.value || 0),
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Precio lista"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      priceOverrides: prev.priceOverrides.filter(
+                        (_, idx) => idx !== index
+                      ),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setConfig((prev) => ({
+                  ...prev,
+                  priceOverrides: [
+                    ...prev.priceOverrides,
+                    {
+                      programa: "nuevo",
+                      nivel: "licenciatura",
+                      modalidad: "presencial",
+                      plan: 1,
+                      plantel: "*",
+                      precioLista: 0,
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar correccion
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Botones de acceso directo
+            </h2>
+            <p className="text-xs text-slate-400">
+              Crea atajos para precargar combinaciones frecuentes.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {config.shortcuts.map((shortcut, index) => (
+              <div
+                key={shortcut.id || `${shortcut.label}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_.7fr_1.3fr_auto]"
+              >
+                <input
+                  value={shortcut.label}
+                  onChange={(event) =>
+                    updateShortcut(index, { label: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Etiqueta"
+                />
+                <select
+                  value={shortcut.programa}
+                  onChange={(event) =>
+                    updateShortcut(index, {
+                      programa: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {programaOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={shortcut.nivel ?? ""}
+                  onChange={(event) =>
+                    updateShortcut(index, {
+                      nivel: event.target.value || undefined,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="">Nivel (opcional)</option>
+                  {nivelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={shortcut.modalidad ?? ""}
+                  onChange={(event) =>
+                    updateShortcut(index, {
+                      modalidad: event.target.value || undefined,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="">Modalidad (opcional)</option>
+                  {modalidadOptions
+                    .filter((option) => option.value !== "*")
+                    .map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  value={shortcut.plan ?? ""}
+                  onChange={(event) =>
+                    updateShortcut(index, {
+                      plan: event.target.value ? Number(event.target.value) : undefined,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Plan (opcional)"
+                />
+                <select
+                  value={shortcut.plantel ?? ""}
+                  onChange={(event) =>
+                    updateShortcut(index, {
+                      plantel: event.target.value || undefined,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="">Plantel (opcional)</option>
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      shortcuts: prev.shortcuts.filter((_, idx) => idx !== index),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setConfig((prev) => ({
+                  ...prev,
+                  shortcuts: [
+                    ...prev.shortcuts,
+                    {
+                      id: buildId(),
+                      label: "Acceso rapido",
+                      programa: "nuevo",
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar acceso directo
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

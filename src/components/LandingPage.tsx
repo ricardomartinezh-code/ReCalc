@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UNIVERSITY_DOMAINS } from "../data/authConfig";
+import { isAdminEmail } from "../data/adminAccess";
 import { getEmailDomain, getStoredSession, isAllowedDomain } from "../utils/auth";
 import { setSelectedSlug } from "../utils/selection";
 
@@ -25,7 +26,8 @@ export default function LandingPage() {
   const hasUnidepAccess =
     Boolean(session) &&
     session.slug === "unidep" &&
-    isAllowedDomain(emailDomain, UNIVERSITY_DOMAINS.unidep);
+    (isAllowedDomain(emailDomain, UNIVERSITY_DOMAINS.unidep) ||
+      isAdminEmail(session.email));
 
   const selectedUniversity = useMemo(
     () => UNIVERSITIES.find((u) => u.key === selected) ?? null,

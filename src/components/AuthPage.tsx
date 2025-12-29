@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { UNIVERSITY_DOMAINS, UNIVERSITY_LABELS } from "../data/authConfig";
+import { isAdminEmail } from "../data/adminAccess";
 import { getEmailDomain, isAllowedDomain, setStoredSession } from "../utils/auth";
 import { getSelectedSlug, setSelectedSlug } from "../utils/selection";
 
@@ -86,7 +87,7 @@ export default function AuthPage() {
     }
 
     const domain = getEmailDomain(trimmedEmail);
-    if (!domain || !isAllowedDomain(domain, allowedDomains)) {
+    if (!isAdminEmail(trimmedEmail) && (!domain || !isAllowedDomain(domain, allowedDomains))) {
       setError(`Solo se permiten correos ${domainHint}.`);
       return;
     }

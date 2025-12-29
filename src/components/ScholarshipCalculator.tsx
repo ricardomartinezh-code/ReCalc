@@ -2,6 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import costosFlatRulesData from "../data/costos_2026_flat_rules.json";
 import costosMetaData from "../data/costos_2026_meta.json";
 import { clearStoredSession } from "../utils/auth";
+import {
+  fetchAdminConfig,
+  getAdminConfig,
+  onAdminConfigUpdate,
+  resolveDefaultBenefit,
+  resolvePriceOverride,
+} from "../utils/adminConfig";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
@@ -318,6 +325,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [openSelectId, setOpenSelectId] = useState<string | null>(null);
   const [beneficioActivo, setBeneficioActivo] = useState(false);
   const [beneficioPorcentaje, setBeneficioPorcentaje] = useState<number>(10);
+  const [adminConfig, setAdminConfig] = useState(() =>
+    getAdminConfig(university)
+  );
 
   const handleLogout = () => {
     clearStoredSession();
@@ -384,9 +394,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const tierResolvido = useMemo((): Tier | undefined => {
     if (!requierePlantel) return undefined;
     if (!plantelBaseResolvido) return undefined;
-    const tier = COSTOS_META.planteles?.[plantelBaseResolvido]?.tier ?? null;
+    const tier = COSTOS_META.planteles?.[plantelBaseResolvido]?.tier ?? null;   
     return tier ?? undefined;
   }, [requierePlantel, plantelBaseResolvido]);
+
+  const adminOverride = useMemo(() => {
+    if (!nivel || !modalidad || !plan) return null;
+    if (requierePlantel && !plantel) return null;
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    return resolvePriceOverride(adminConfig, {
+      programa,
+      nivel,
+      modalidad,
+      plan: Number(plan),
+      plantel: plantelKey || "",
+    });
+  }, [adminConfig, nivel, modalidad, plan, plantel, programa, requierePlantel]);
 
   const nivelesDisponibles = useMemo(() => {
     const set = new Set<Nivel>();
@@ -536,6 +559,42 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [initialProgram]);
 
   useEffect(() => {
+    let active = true;
+    const loadRemote = async () => {
+      try {
+        const remote = await fetchAdminConfig(university);
+        if (active) setAdminConfig(remote);
+      } catch (err) {
+        if (active) setAdminConfig(getAdminConfig(university));
+      }
+    };
+    setAdminConfig(getAdminConfig(university));
+    void loadRemote();
+    const interval = window.setInterval(loadRemote, 10000);
+    const unsubscribe = onAdminConfigUpdate((slug) => {
+      if (slug === university) {
+        setAdminConfig(getAdminConfig(university));
+      }
+    });
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      unsubscribe();
+    };
+  }, [university]);
+
+  useEffect(() => {
+    if (!modalidad || isRegreso) return;
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    const rule = resolveDefaultBenefit(adminConfig, modalidad, plantelKey || "");
+    if (!rule) return;
+    setBeneficioActivo(rule.activo);
+    setBeneficioPorcentaje(rule.porcentaje);
+    setResultadoMonto(null);
+    setResultadoPorcentaje(null);
+  }, [adminConfig, modalidad, plantel, isRegreso]);
+
+  useEffect(() => {
     if (!nivel || !modalidad || !plan) {
       setPrecioLista(null);
       return;
@@ -543,6 +602,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     if (requierePlantel && !plantel) {
       setPrecioLista(null);
+      return;
+    }
+
+    if (adminOverride && Number.isFinite(adminOverride.precioLista)) {
+      setPrecioLista(Math.round(adminOverride.precioLista * 100) / 100);
       return;
     }
 
@@ -575,7 +639,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     const base = referencia.monto / (1 - referencia.porcentaje / 100);
     setPrecioLista(Math.round(base * 100) / 100);
-  }, [nivel, modalidad, plan, plantel, requierePlantel, tierResolvido, programa]);
+  }, [
+    nivel,
+    modalidad,
+    plan,
+    plantel,
+    requierePlantel,
+    tierResolvido,
+    programa,
+    adminOverride,
+  ]);
 
   const handleCalcular = () => {
     setError("");
@@ -657,7 +730,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       ];
 
     let base: number | null =
-      typeof oferta?.neto === "number" ? oferta.neto : null;
+      adminOverride && Number.isFinite(adminOverride.precioLista)
+        ? adminOverride.precioLista
+        : typeof oferta?.neto === "number"
+          ? oferta.neto
+          : null;
 
     if (base === null) {
       const referencia = match
@@ -860,6 +937,39 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     />
   );
 
+  const adminShortcuts = useMemo(
+    () => adminConfig.shortcuts.filter((entry) => entry.label?.trim()),
+    [adminConfig.shortcuts]
+  );
+
+  const applyShortcut = (shortcut: {
+    label?: string;
+    programa?: string;
+    nivel?: string;
+    modalidad?: string;
+    plan?: number;
+    plantel?: string;
+  }) => {
+    const planValue =
+      typeof shortcut.plan === "number" && !Number.isNaN(shortcut.plan)
+        ? shortcut.plan
+        : "";
+    setPrograma((shortcut.programa as Programa) ?? "nuevo");
+    setNivel((shortcut.nivel as Nivel) ?? "");
+    setModalidad((shortcut.modalidad as Modalidad) ?? "");
+    setPlan(planValue);
+    setPlantel(shortcut.plantel ?? "");
+    setPlantelExtras("");
+    setPromedio("");
+    setResultadoMonto(null);
+    setResultadoPorcentaje(null);
+    setResultadoEtiqueta(null);
+    setPrecioLista(null);
+    setError("");
+    setExtrasSeleccionados([]);
+    setOpenSelectId(null);
+  };
+
   return (
     <div
       className={`min-h-screen min-h-[100dvh] text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
@@ -883,6 +993,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                       <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-end sm:items-center">
                         <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
                           UNIDEP
+                        </span>
+                        <span className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.2em] text-slate-400">
+                          unidep
                         </span>
                         <button
                           type="button"
@@ -912,6 +1025,26 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     de colegiatura.
                   </p>
                 </header>
+
+        {adminShortcuts.length ? (
+          <section className="rounded-2xl border border-slate-800/80 bg-slate-950/40 p-3 md:p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+              Accesos directos
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {adminShortcuts.map((shortcut, index) => (
+                <button
+                  key={`${shortcut.label}-${index}`}
+                  type="button"
+                  onClick={() => applyShortcut(shortcut)}
+                  className="rounded-full border border-slate-700 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-slate-400 hover:bg-slate-900/60 transition"
+                >
+                  {shortcut.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {error && (
           <div className="rounded-xl border border-red-500/60 bg-red-500/10 px-4 py-2 text-sm text-red-100">
