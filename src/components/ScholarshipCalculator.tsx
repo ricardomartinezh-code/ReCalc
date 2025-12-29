@@ -392,19 +392,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const requierePlantel = useMemo(() => {
     if (!nivel || !modalidad) return false;
-    if (
+    return (
       (nivel === "licenciatura" ||
         nivel === "salud" ||
         nivel === "preparatoria") &&
       modalidad !== "online"
-    ) {
-      return true;
-    }
-    if (isRegreso && nivel === "licenciatura" && modalidad === "online") {
-      return true;
-    }
-    return false;
-  }, [nivel, modalidad, isRegreso]);
+    );
+  }, [nivel, modalidad]);
 
   const plantelBaseResolvido = useMemo(() => {
     if (!nivel || !modalidad) return "";
@@ -638,7 +632,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       }
       const modalidadKey = modalidad === "online" ? "online" : "presencial";
       const materiasValue =
-        REGRESO_MATERIAS.materias?.[plantel]?.[modalidadKey]?.[
+        REGRESO_MATERIAS.materias?.[plantelKey]?.[modalidadKey]?.[
           String(materiasInscritas)
         ];
       if (typeof materiasValue === "number") {
@@ -775,7 +769,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     const materiasPrecio =
       isRegreso && nivel === "licenciatura" && materiasInscritas
-        ? REGRESO_MATERIAS.materias?.[plantel]?.[
+        ? REGRESO_MATERIAS.materias?.[plantelKey]?.[
             modalidad === "online" ? "online" : "presencial"
           ]?.[String(materiasInscritas)]
         : null;
