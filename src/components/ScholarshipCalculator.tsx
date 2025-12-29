@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import costosFlatRulesData from "../data/costos_2026_flat_rules.json";
 import costosMetaData from "../data/costos_2026_meta.json";
+import regresoMateriasData from "../data/regreso_materias.json";
 import { clearStoredSession } from "../utils/auth";
 import {
   fetchAdminConfig,
@@ -58,8 +59,21 @@ interface CostosMeta {
   planteles: Record<string, PlantelMeta>;
 }
 
+interface RegresoMateriasData {
+  version: string;
+  materias: Record<
+    string,
+    {
+      presencial: Record<string, number>;
+      online: Record<string, number>;
+    }
+  >;
+}
+
 const COSTOS_RULES: CostoRule[] = costosFlatRulesData as CostoRule[];
 const COSTOS_META: CostosMeta = costosMetaData as CostosMeta;
+const REGRESO_MATERIAS: RegresoMateriasData =
+  regresoMateriasData as RegresoMateriasData;
 
 const resolveProgramaKey = (p: Programa): ProgramaDataKey =>
   p === "nuevo" ? "nuevo_ingreso" : "reingreso";
@@ -299,6 +313,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [plan, setPlan] = useState<number | "">("");
   const [plantel, setPlantel] = useState<string>("");
   const [plantelExtras, setPlantelExtras] = useState<string>("");
+  const [materiasInscritas, setMateriasInscritas] = useState<number | "">("");
   const [promedio, setPromedio] = useState<string>("");
 
   const [resultadoMonto, setResultadoMonto] = useState<number | null>(null);
@@ -377,13 +392,19 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const requierePlantel = useMemo(() => {
     if (!nivel || !modalidad) return false;
-    return (
+    if (
       (nivel === "licenciatura" ||
         nivel === "salud" ||
         nivel === "preparatoria") &&
       modalidad !== "online"
-    );
-  }, [nivel, modalidad]);
+    ) {
+      return true;
+    }
+    if (isRegreso && nivel === "licenciatura" && modalidad === "online") {
+      return true;
+    }
+    return false;
+  }, [nivel, modalidad, isRegreso]);
 
   const plantelBaseResolvido = useMemo(() => {
     if (!nivel || !modalidad) return "";
@@ -610,6 +631,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       return;
     }
 
+    if (isRegreso && nivel === "licenciatura") {
+      if (!materiasInscritas) {
+        setPrecioLista(null);
+        return;
+      }
+      const modalidadKey = modalidad === "online" ? "online" : "presencial";
+      const materiasValue =
+        REGRESO_MATERIAS.materias?.[plantel]?.[modalidadKey]?.[
+          String(materiasInscritas)
+        ];
+      if (typeof materiasValue === "number") {
+        setPrecioLista(Math.round(materiasValue * 100) / 100);
+        return;
+      }
+    }
+
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     const oferta =
       plantelKey && COSTOS_META.planteles?.[plantelKey]?.oferta?.[nivel]?.[
@@ -648,6 +685,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     tierResolvido,
     programa,
     adminOverride,
+    materiasInscritas,
+    isRegreso,
   ]);
 
   const handleCalcular = () => {
@@ -663,6 +702,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     if (requierePlantel && !plantel) {
       setError("Selecciona un plantel para esta línea de negocio.");
+      return;
+    }
+
+    if (isRegreso && nivel === "licenciatura" && !materiasInscritas) {
+      setError("Selecciona las materias inscritas.");
       return;
     }
 
@@ -682,7 +726,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
     const programaKey = resolveProgramaKey(programa);
 
-    if (requierePlantel && !tierResolvido) {
+    if (requierePlantel && modalidad !== "online" && !tierResolvido) {
       setError("No se encontró el tier para el plantel seleccionado.");
       return;
     }
@@ -729,9 +773,18 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         String(plan)
       ];
 
+    const materiasPrecio =
+      isRegreso && nivel === "licenciatura" && materiasInscritas
+        ? REGRESO_MATERIAS.materias?.[plantel]?.[
+            modalidad === "online" ? "online" : "presencial"
+          ]?.[String(materiasInscritas)]
+        : null;
+
     let base: number | null =
       adminOverride && Number.isFinite(adminOverride.precioLista)
         ? adminOverride.precioLista
+        : typeof materiasPrecio === "number"
+          ? materiasPrecio
         : typeof oferta?.neto === "number"
           ? oferta.neto
           : null;
@@ -773,6 +826,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setPlan("");
     setPlantel("");
     setPlantelExtras("");
+    setMateriasInscritas("");
     setPromedio("");
     setResultadoMonto(null);
     setResultadoPorcentaje(null);
@@ -809,6 +863,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               ? "academia"
               : "nuevo";
         setPrograma(nextPrograma);
+        setMateriasInscritas("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setError("");
@@ -841,6 +896,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         setModalidad("");
         setPlan("");
         setPlantel("");
+        setMateriasInscritas("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasActivos(false);
@@ -872,6 +928,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         setModalidad(normalizado);
         setPlan("");
         setPlantel("");
+        setMateriasInscritas("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -893,6 +950,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       onChange={(val) => {
         const num = Number(val.split(" ")[0]);
         setPlan(Number.isNaN(num) ? "" : num);
+        setMateriasInscritas("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -921,6 +979,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       value={plantel}
       onChange={(val) => {
         setPlantel(val);
+        setMateriasInscritas("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -943,6 +1002,37 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         (entry) => entry.label?.trim() && entry.url?.trim()
       ),
     [adminConfig.shortcuts]
+  );
+
+  const materiasOpciones = useMemo(
+    () => [
+      "1 materia",
+      "2 materias",
+      "3 materias",
+      "4 materias (plan completo 11 cuatrimestres)",
+      "5 materias (plan base Salud y Bachillerato; 9 cuatrimestres)",
+    ],
+    []
+  );
+
+  const materiasSelect = (
+    <SearchableSelect
+      id="materias"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Materias inscritas"
+      options={materiasOpciones}
+      value={materiasInscritas ? materiasOpciones[materiasInscritas - 1] : ""}
+      onChange={(val) => {
+        const num = Number(val.split(" ")[0]);
+        setMateriasInscritas(Number.isNaN(num) ? "" : num);
+        setResultadoMonto(null);
+        setResultadoPorcentaje(null);
+      }}
+      placeholder="Selecciona materias"
+      disabled={!isRegreso || nivel !== "licenciatura"}
+      accent={accent}
+    />
   );
 
   return (
@@ -1038,6 +1128,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               {planSelect}
               {plantelSelect}
             </div>
+            {isRegreso && nivel === "licenciatura" && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {materiasSelect}
+              </div>
+            )}
           </>
         )}
 

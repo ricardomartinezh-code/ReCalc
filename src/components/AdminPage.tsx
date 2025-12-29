@@ -265,6 +265,12 @@ export default function AdminPage() {
       setError("Selecciona un slug para reiniciar.");
       return;
     }
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        "Esto borra los ajustes personalizados y restaura los valores originales. ¿Continuar?"
+      );
+      if (!ok) return;
+    }
     const empty = emptyConfig();
     clearAdminConfig(activeSlug);
     setConfig(empty);
@@ -363,7 +369,7 @@ export default function AdminPage() {
                     : "border-slate-700 text-slate-300 hover:border-rose-400/70 hover:text-rose-200"
                 }`}
               >
-                Limpiar
+                Reset
               </button>
               <button
                 type="button"
