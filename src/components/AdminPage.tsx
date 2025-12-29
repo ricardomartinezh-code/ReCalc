@@ -42,6 +42,7 @@ const programaOptions: Array<{ value: Programa; label: string }> = [
 
 const ADMIN_SLUGS = ["unidep", "utc", "ula"];
 const ADMIN_LAST_SLUG_KEY = "recalc_admin_last_slug";
+const ADMIN_DRAFT_PREFIX = "recalc_admin_draft_";
 
 const emptyConfig = (): AdminConfig => ({
   version: 1,
@@ -98,9 +99,56 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+
+  const loadDraft = (slugValue: string) => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(`${ADMIN_DRAFT_PREFIX}${slugValue}`);
+      if (!raw) return null;
+      return JSON.parse(raw) as AdminConfig;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const saveDraft = (slugValue: string, nextConfig: AdminConfig) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        `${ADMIN_DRAFT_PREFIX}${slugValue}`,
+        JSON.stringify(nextConfig)
+      );
+    } catch (err) {
+      // Ignore storage failures
+    }
+  };
+
+  const clearDraft = (slugValue: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(`${ADMIN_DRAFT_PREFIX}${slugValue}`);
+    } catch (err) {
+      // Ignore storage failures
+    }
+  };
+
+  const updateConfig = (updater: (prev: AdminConfig) => AdminConfig) => {
+    if (!activeSlug) return;
+    setConfig((prev) => {
+      const next = updater(prev);
+      setIsDirty(true);
+      saveDraft(activeSlug, next);
+      return next;
+    });
+  };
 
   const refreshConfig = async () => {
     if (!activeSlug) return;
+    if (isDirty) {
+      setError("Hay cambios sin guardar. Guarda o limpia antes de actualizar.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -120,7 +168,16 @@ export default function AdminPage() {
       if (!activeSlug) return;
       setLoading(true);
       setError("");
-      setConfig(getAdminConfig(activeSlug));
+      setIsDirty(false);
+      const cached = getAdminConfig(activeSlug);
+      setConfig(cached);
+      const draft = loadDraft(activeSlug);
+      if (draft) {
+        setConfig(draft);
+        setIsDirty(true);
+        setLoading(false);
+        return;
+      }
       try {
         const remote = await fetchAdminConfig(activeSlug);
         if (!active) return;
@@ -145,7 +202,7 @@ export default function AdminPage() {
   }, [activeSlug]);
 
   const updateBenefitRule = (index: number, patch: Partial<AdminBenefitRule>) =>
-    setConfig((prev) => {
+    updateConfig((prev) => {
       const next = [...prev.defaults.beneficio.rules];
       next[index] = { ...next[index], ...patch };
       return {
@@ -158,14 +215,14 @@ export default function AdminPage() {
     });
 
   const updateOverride = (index: number, patch: Partial<AdminPriceOverride>) =>
-    setConfig((prev) => {
+    updateConfig((prev) => {
       const next = [...prev.priceOverrides];
       next[index] = { ...next[index], ...patch };
       return { ...prev, priceOverrides: next };
     });
 
   const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
-    setConfig((prev) => {
+    updateConfig((prev) => {
       const next = [...prev.shortcuts];
       next[index] = { ...next[index], ...patch };
       return { ...prev, shortcuts: next };
@@ -189,6 +246,8 @@ export default function AdminPage() {
       setConfig(updated);
       saveAdminConfig(activeSlug, updated);
       setSaved(true);
+      setIsDirty(false);
+      clearDraft(activeSlug);
     } catch (err) {
       setError(
         err instanceof Error
@@ -221,6 +280,8 @@ export default function AdminPage() {
       setConfig(updated);
       saveAdminConfig(activeSlug, updated);
       setSaved(true);
+      setIsDirty(false);
+      clearDraft(activeSlug);
     } catch (err) {
       setError(
         err instanceof Error
@@ -275,7 +336,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setConfig((prev) => ({
+                    updateConfig((prev) => ({
                       ...prev,
                       enabled: !prev.enabled,
                     }))
@@ -284,6 +345,11 @@ export default function AdminPage() {
                 >
                   {config.enabled ? "Desactivar" : "Activar"}
                 </button>
+                {isDirty ? (
+                  <span className="rounded-full border border-amber-400/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-200">
+                    Sin guardar
+                  </span>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -415,7 +481,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setConfig((prev) => ({
+                    updateConfig((prev) => ({
                       ...prev,
                       defaults: {
                         ...prev.defaults,
@@ -437,7 +503,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() =>
-                setConfig((prev) => ({
+                updateConfig((prev) => ({
                   ...prev,
                   defaults: {
                     ...prev.defaults,
@@ -471,6 +537,15 @@ export default function AdminPage() {
             <p className="text-xs text-slate-400">
               Sobrescribe precio lista para combinaciones especificas.
             </p>
+          </div>
+          <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_.7fr_1.3fr_1fr_auto] gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+            <span>Programa</span>
+            <span>Nivel</span>
+            <span>Modalidad</span>
+            <span>Plan</span>
+            <span>Plantel</span>
+            <span>Precio lista</span>
+            <span></span>
           </div>
           <div className="space-y-3">
             {config.priceOverrides.map((override, index) => (
@@ -562,7 +637,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setConfig((prev) => ({
+                    updateConfig((prev) => ({
                       ...prev,
                       priceOverrides: prev.priceOverrides.filter(
                         (_, idx) => idx !== index
@@ -578,7 +653,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() =>
-                setConfig((prev) => ({
+                updateConfig((prev) => ({
                   ...prev,
                   priceOverrides: [
                     ...prev.priceOverrides,
@@ -703,7 +778,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    setConfig((prev) => ({
+                    updateConfig((prev) => ({
                       ...prev,
                       shortcuts: prev.shortcuts.filter((_, idx) => idx !== index),
                     }))
@@ -717,7 +792,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={() =>
-                setConfig((prev) => ({
+                updateConfig((prev) => ({
                   ...prev,
                   shortcuts: [
                     ...prev.shortcuts,
