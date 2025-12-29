@@ -17,11 +17,7 @@ export type AdminPriceOverride = {
 export type AdminShortcut = {
   id: string;
   label: string;
-  programa: string;
-  nivel?: string;
-  modalidad?: string;
-  plan?: number;
-  plantel?: string;
+  url: string;
 };
 
 export type AdminConfig = {

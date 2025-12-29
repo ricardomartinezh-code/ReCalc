@@ -681,14 +681,14 @@ export default function AdminPage() {
               Botones de acceso directo
             </h2>
             <p className="text-xs text-slate-400">
-              Crea atajos para precargar combinaciones frecuentes.
+              Crea enlaces directos para compartir o abrir rutas externas.
             </p>
           </div>
           <div className="space-y-3">
             {config.shortcuts.map((shortcut, index) => (
               <div
                 key={shortcut.id || `${shortcut.label}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_.7fr_1.3fr_auto]"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_2fr_auto]"
               >
                 <input
                   value={shortcut.label}
@@ -698,83 +698,16 @@ export default function AdminPage() {
                   className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
                   placeholder="Etiqueta"
                 />
-                <select
-                  value={shortcut.programa}
-                  onChange={(event) =>
-                    updateShortcut(index, {
-                      programa: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  {programaOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={shortcut.nivel ?? ""}
-                  onChange={(event) =>
-                    updateShortcut(index, {
-                      nivel: event.target.value || undefined,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="">Nivel (opcional)</option>
-                  {nivelOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={shortcut.modalidad ?? ""}
-                  onChange={(event) =>
-                    updateShortcut(index, {
-                      modalidad: event.target.value || undefined,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="">Modalidad (opcional)</option>
-                  {modalidadOptions
-                    .filter((option) => option.value !== "*")
-                    .map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                </select>
                 <input
-                  type="number"
-                  min="1"
-                  value={shortcut.plan ?? ""}
+                  value={shortcut.url}
                   onChange={(event) =>
                     updateShortcut(index, {
-                      plan: event.target.value ? Number(event.target.value) : undefined,
+                      url: event.target.value,
                     })
                   }
                   className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="Plan (opcional)"
+                  placeholder="https://..."
                 />
-                <select
-                  value={shortcut.plantel ?? ""}
-                  onChange={(event) =>
-                    updateShortcut(index, {
-                      plantel: event.target.value || undefined,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="">Plantel (opcional)</option>
-                  {plantelOptions.map((plantel) => (
-                    <option key={plantel} value={plantel}>
-                      {plantel}
-                    </option>
-                  ))}
-                </select>
                 <button
                   type="button"
                   onClick={() =>
@@ -799,7 +732,7 @@ export default function AdminPage() {
                     {
                       id: buildId(),
                       label: "Acceso rapido",
-                      programa: "nuevo",
+                      url: "",
                     },
                   ],
                 }))

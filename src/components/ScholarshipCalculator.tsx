@@ -938,37 +938,12 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   );
 
   const adminShortcuts = useMemo(
-    () => adminConfig.shortcuts.filter((entry) => entry.label?.trim()),
+    () =>
+      adminConfig.shortcuts.filter(
+        (entry) => entry.label?.trim() && entry.url?.trim()
+      ),
     [adminConfig.shortcuts]
   );
-
-  const applyShortcut = (shortcut: {
-    label?: string;
-    programa?: string;
-    nivel?: string;
-    modalidad?: string;
-    plan?: number;
-    plantel?: string;
-  }) => {
-    const planValue =
-      typeof shortcut.plan === "number" && !Number.isNaN(shortcut.plan)
-        ? shortcut.plan
-        : "";
-    setPrograma((shortcut.programa as Programa) ?? "nuevo");
-    setNivel((shortcut.nivel as Nivel) ?? "");
-    setModalidad((shortcut.modalidad as Modalidad) ?? "");
-    setPlan(planValue);
-    setPlantel(shortcut.plantel ?? "");
-    setPlantelExtras("");
-    setPromedio("");
-    setResultadoMonto(null);
-    setResultadoPorcentaje(null);
-    setResultadoEtiqueta(null);
-    setPrecioLista(null);
-    setError("");
-    setExtrasSeleccionados([]);
-    setOpenSelectId(null);
-  };
 
   return (
     <div
@@ -1027,14 +1002,15 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {adminShortcuts.map((shortcut, index) => (
-                <button
+                <a
                   key={`${shortcut.label}-${index}`}
-                  type="button"
-                  onClick={() => applyShortcut(shortcut)}
+                  href={shortcut.url}
+                  target="_blank"
+                  rel="noreferrer"
                   className="rounded-full border border-slate-700 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 hover:border-slate-400 hover:bg-slate-900/60 transition"
                 >
                   {shortcut.label}
-                </button>
+                </a>
               ))}
             </div>
           </section>
