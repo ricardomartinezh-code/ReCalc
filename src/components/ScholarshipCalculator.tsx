@@ -991,12 +991,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   <div className="flex flex-col gap-3 sm:gap-4">
                     {university === "unidep" && (
                       <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-end sm:items-center">
-                        <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.18em] text-slate-200">
-                          UNIDEP
-                        </span>
-                        <span className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950/60 px-2.5 py-1 text-[10px] font-semibold tracking-[0.2em] text-slate-400">
-                          unidep
-                        </span>
                         <button
                           type="button"
                           onClick={handleLogout}
