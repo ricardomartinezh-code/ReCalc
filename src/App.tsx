@@ -65,6 +65,13 @@ const RequireAdmin: React.FC<{ slug: string; children: React.ReactNode }> = ({
 
 const UnidepRoute: React.FC = () => {
   const { program } = useParams();
+  if (String(program ?? "").toLowerCase() === "admin") {
+    return (
+      <RequireAdmin slug="unidep">
+        <AdminPage />
+      </RequireAdmin>
+    );
+  }
   const initialProgram = resolveProgram(program);
   return (
     <RequireAuth slug="unidep">
