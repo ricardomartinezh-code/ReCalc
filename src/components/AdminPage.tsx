@@ -40,8 +40,12 @@ const programaOptions: Array<{ value: Programa; label: string }> = [
   { value: "academia", label: "Academia" },
 ];
 
+const ADMIN_SLUGS = ["unidep", "utc", "ula"];
+const ADMIN_LAST_SLUG_KEY = "recalc_admin_last_slug";
+
 const emptyConfig = (): AdminConfig => ({
   version: 1,
+  enabled: true,
   defaults: { beneficio: { rules: [] } },
   priceOverrides: [],
   shortcuts: [],
@@ -53,21 +57,34 @@ export default function AdminPage() {
   const { slug } = useParams();
   const normalizedSlug = String(slug ?? "").trim().toLowerCase();
   const session = getStoredSession();
-  const label =
-    UNIVERSITY_LABELS[normalizedSlug as keyof typeof UNIVERSITY_LABELS] ?? "";
-  const isKnownSlug = Boolean(label);
-
-  if (!isKnownSlug) {
-    return <Navigate to="/" replace />;
-  }
 
   if (!session) {
-    return <Navigate to={`/auth/${normalizedSlug}`} replace />;
+    return <Navigate to="/auth/unidep" replace />;
   }
 
-  if (session.slug !== normalizedSlug || !isAdminEmail(session.email)) {
+  if (!isAdminEmail(session.email)) {
     return <Navigate to="/" replace />;
   }
+
+  const availableSlugs = useMemo(() => {
+    const keys = new Set(Object.keys(UNIVERSITY_LABELS));
+    ADMIN_SLUGS.forEach((entry) => keys.add(entry));
+    return Array.from(keys).sort((a, b) => a.localeCompare(b, "es"));
+  }, []);
+
+  const slugLocked = Boolean(normalizedSlug);
+
+  const getInitialSlug = () => {
+    if (normalizedSlug) return normalizedSlug;
+    if (session.slug) return session.slug;
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem(ADMIN_LAST_SLUG_KEY) ?? "";
+  };
+
+  const [activeSlug, setActiveSlug] = useState(getInitialSlug);
+  const activeLabel =
+    UNIVERSITY_LABELS[activeSlug as keyof typeof UNIVERSITY_LABELS] ??
+    activeSlug.toUpperCase();
 
   const plantelOptions = useMemo(() => {
     const entries = Object.keys(costosMetaData.planteles ?? {});
@@ -75,7 +92,7 @@ export default function AdminPage() {
   }, []);
 
   const [config, setConfig] = useState<AdminConfig>(() =>
-    getAdminConfig(normalizedSlug)
+    getAdminConfig(activeSlug || normalizedSlug)
   );
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -83,13 +100,13 @@ export default function AdminPage() {
   const [error, setError] = useState("");
 
   const refreshConfig = async () => {
-    if (!normalizedSlug) return;
+    if (!activeSlug) return;
     setLoading(true);
     setError("");
     try {
-      const remote = await fetchAdminConfig(normalizedSlug);
+      const remote = await fetchAdminConfig(activeSlug);
       setConfig(remote);
-      saveAdminConfig(normalizedSlug, remote);
+      saveAdminConfig(activeSlug, remote);
     } catch (err) {
       setError("No fue posible cargar la configuracion del servidor.");
     } finally {
@@ -100,14 +117,15 @@ export default function AdminPage() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      if (!normalizedSlug) return;
+      if (!activeSlug) return;
       setLoading(true);
       setError("");
+      setConfig(getAdminConfig(activeSlug));
       try {
-        const remote = await fetchAdminConfig(normalizedSlug);
+        const remote = await fetchAdminConfig(activeSlug);
         if (!active) return;
         setConfig(remote);
-        saveAdminConfig(normalizedSlug, remote);
+        saveAdminConfig(activeSlug, remote);
       } catch (err) {
         if (!active) return;
         setError("No fue posible cargar la configuracion del servidor.");
@@ -119,7 +137,12 @@ export default function AdminPage() {
     return () => {
       active = false;
     };
-  }, [normalizedSlug]);
+  }, [activeSlug]);
+
+  useEffect(() => {
+    if (!activeSlug || typeof window === "undefined") return;
+    window.localStorage.setItem(ADMIN_LAST_SLUG_KEY, activeSlug);
+  }, [activeSlug]);
 
   const updateBenefitRule = (index: number, patch: Partial<AdminBenefitRule>) =>
     setConfig((prev) => {
@@ -150,17 +173,21 @@ export default function AdminPage() {
 
   const handleSave = async () => {
     if (!session) return;
+    if (!activeSlug) {
+      setError("Selecciona un slug para guardar.");
+      return;
+    }
     setSaved(false);
     setSaving(true);
     setError("");
     try {
       const updated = await updateAdminConfig(
-        normalizedSlug,
+        activeSlug,
         session.email,
         config
       );
       setConfig(updated);
-      saveAdminConfig(normalizedSlug, updated);
+      saveAdminConfig(activeSlug, updated);
       setSaved(true);
     } catch (err) {
       setError(
@@ -175,20 +202,24 @@ export default function AdminPage() {
 
   const handleReset = async () => {
     if (!session) return;
+    if (!activeSlug) {
+      setError("Selecciona un slug para reiniciar.");
+      return;
+    }
     const empty = emptyConfig();
-    clearAdminConfig(normalizedSlug);
+    clearAdminConfig(activeSlug);
     setConfig(empty);
     setSaved(false);
     setSaving(true);
     setError("");
     try {
       const updated = await updateAdminConfig(
-        normalizedSlug,
+        activeSlug,
         session.email,
         empty
       );
       setConfig(updated);
-      saveAdminConfig(normalizedSlug, updated);
+      saveAdminConfig(activeSlug, updated);
       setSaved(true);
     } catch (err) {
       setError(
@@ -211,8 +242,49 @@ export default function AdminPage() {
                 Panel admin
               </p>
               <h1 className="text-xl font-semibold text-slate-100">
-                {label} · {normalizedSlug}/admin
+                {activeSlug ? `${activeLabel} · ${activeSlug}/admin` : "Admin"}
               </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <label className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                  Slug
+                </label>
+                <select
+                  value={activeSlug}
+                  onChange={(event) => setActiveSlug(event.target.value)}
+                  disabled={slugLocked}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                >
+                  <option value="" disabled>
+                    Selecciona slug
+                  </option>
+                  {availableSlugs.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+                    config.enabled
+                      ? "border-emerald-400/50 text-emerald-200"
+                      : "border-slate-600 text-slate-400"
+                  }`}
+                >
+                  {config.enabled ? "Activo" : "Inactivo"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      enabled: !prev.enabled,
+                    }))
+                  }
+                  className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+                >
+                  {config.enabled ? "Desactivar" : "Activar"}
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <button

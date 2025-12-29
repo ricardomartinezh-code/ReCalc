@@ -26,6 +26,7 @@ export type AdminShortcut = {
 
 export type AdminConfig = {
   version: number;
+  enabled: boolean;
   defaults: {
     beneficio: {
       rules: AdminBenefitRule[];
@@ -40,6 +41,7 @@ const EVENT_NAME = "recalc-admin-config-updated";
 
 const emptyConfig = (): AdminConfig => ({
   version: 1,
+  enabled: true,
   defaults: {
     beneficio: {
       rules: [],
@@ -68,6 +70,8 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
   return {
     ...fallback,
     ...config,
+    enabled:
+      typeof config.enabled === "boolean" ? config.enabled : fallback.enabled,
     defaults: {
       ...fallback.defaults,
       ...(config.defaults ?? {}),
@@ -163,6 +167,7 @@ export function resolveDefaultBenefit(
   modalidad: string,
   plantel: string
 ) {
+  if (!config.enabled) return null;
   const normalizedModalidad = normalizeValue(modalidad);
   const normalizedPlantel = normalizeValue(plantel);
   let best: AdminBenefitRule | null = null;
@@ -192,6 +197,7 @@ export function resolvePriceOverride(
     plantel: string;
   }
 ) {
+  if (!config.enabled) return null;
   const targetPrograma = normalizeValue(criteria.programa);
   const targetNivel = normalizeValue(criteria.nivel);
   const targetModalidad = normalizeValue(criteria.modalidad);

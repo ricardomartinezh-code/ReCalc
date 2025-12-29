@@ -49,15 +49,16 @@ const RequireAuth: React.FC<{ slug: string; children: React.ReactNode }> = ({
   return <>{children}</>;
 };
 
-const RequireAdmin: React.FC<{ slug: string; children: React.ReactNode }> = ({
-  slug,
-  children,
-}) => {
+const RequireAdmin: React.FC<{
+  slug?: string;
+  children: React.ReactNode;
+}> = ({ slug, children }) => {
   const session = getStoredSession();
   if (!session) {
-    return <Navigate to={`/auth/${slug}`} replace />;
+    const target = slug ? `/auth/${slug}` : "/auth/unidep";
+    return <Navigate to={target} replace />;
   }
-  if (session.slug !== slug || !isAdminEmail(session.email)) {
+  if (!isAdminEmail(session.email)) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
@@ -91,6 +92,12 @@ const AdminRoute: React.FC = () => {
   );
 };
 
+const AdminRootRoute: React.FC = () => (
+  <RequireAdmin>
+    <AdminPage />
+  </RequireAdmin>
+);
+
 const PageLoader = () => (
   <div className="min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 flex items-center justify-center p-6">
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 px-6 py-5 text-sm text-slate-300 shadow-xl">
@@ -105,6 +112,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/:slug" element={<AuthPage />} />
+        <Route path="/admin" element={<AdminRootRoute />} />
         <Route
           path="/unidep/admin"
           element={

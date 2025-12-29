@@ -4,6 +4,7 @@ import { sendJson, setCors } from "../auth/response.js";
 
 const emptyConfig = {
   version: 1,
+  enabled: true,
   defaults: { beneficio: { rules: [] } },
   priceOverrides: [],
   shortcuts: [],
@@ -26,6 +27,8 @@ function normalizeConfig(config: any) {
   return {
     ...emptyConfig,
     ...config,
+    enabled:
+      typeof config.enabled === "boolean" ? config.enabled : emptyConfig.enabled,
     defaults: {
       ...emptyConfig.defaults,
       ...(config.defaults ?? {}),

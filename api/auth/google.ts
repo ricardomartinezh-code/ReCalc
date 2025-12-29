@@ -33,9 +33,12 @@ export default async function handler(req: any, res: any) {
 
   const body = parseBody(req);
   const credential = String(body?.credential ?? "").trim();
+  const accessToken = String(
+    body?.accessToken ?? body?.access_token ?? ""
+  ).trim();
   const slug = String(body?.slug ?? "").trim().toLowerCase();
 
-  if (!credential || !slug) {
+  if ((!credential && !accessToken) || !slug) {
     sendJson(res, 400, { error: "Faltan datos requeridos." });
     return;
   }
@@ -53,10 +56,34 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
-    const payload = ticket.getPayload();
-    const email = payload?.email?.toLowerCase() ?? "";
-    const emailVerified = Boolean(payload?.email_verified);
+    let email = "";
+    let emailVerified = false;
+    if (credential) {
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: clientId,
+      });
+      const payload = ticket.getPayload();
+      email = payload?.email?.toLowerCase() ?? "";
+      emailVerified = Boolean(payload?.email_verified);
+    } else if (accessToken) {
+      const userInfo = await fetch(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      const data = (await userInfo.json().catch(() => ({}))) as {
+        email?: string;
+        email_verified?: boolean;
+      };
+      if (!userInfo.ok) {
+        sendJson(res, 401, { error: "No fue posible validar el token." });
+        return;
+      }
+      email = String(data?.email ?? "").toLowerCase();
+      emailVerified = Boolean(data?.email_verified);
+    }
 
     if (!email || !emailVerified) {
       sendJson(res, 401, { error: "No fue posible validar el correo con Google." });
