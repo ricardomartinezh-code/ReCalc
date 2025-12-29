@@ -98,6 +98,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/:slug" element={<AuthPage />} />
+        <Route
+          path="/unidep/admin"
+          element={
+            <RequireAdmin slug="unidep">
+              <AdminPage />
+            </RequireAdmin>
+          }
+        />
         <Route path="/unidep" element={<UnidepRoute />} />
         <Route path="/unidep/:program" element={<UnidepRoute />} />
         <Route path="/:slug/admin" element={<AdminRoute />} />
