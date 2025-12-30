@@ -607,14 +607,10 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     if (!rule) {
       setBeneficioActivo(false);
       setBeneficioPorcentaje(10);
-      setResultadoMonto(null);
-      setResultadoPorcentaje(null);
       return;
     }
     setBeneficioActivo(rule.activo);
     setBeneficioPorcentaje(rule.porcentaje);
-    setResultadoMonto(null);
-    setResultadoPorcentaje(null);
   }, [adminConfig, modalidad, plantel, isRegreso]);
 
   useEffect(() => {
@@ -1795,7 +1791,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             rel="noreferrer"
             className="rounded-xl border border-slate-700 bg-slate-900/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 hover:border-slate-500 hover:bg-slate-900/60 transition"
           >
-            Consultar CEP Banxico
+            Consultar comprobante SPEI
           </a>
         </div>
 
