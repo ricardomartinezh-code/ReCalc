@@ -144,13 +144,22 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   accent = "emerald",
 }) => {
   const [query, setQuery] = useState("");
+  const [highlightIndex, setHighlightIndex] = useState(0);
   const open = openId === id;
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const listRef = React.useRef<HTMLUListElement | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const listId = `${id}-listbox`;
 
   const filteredOptions = useMemo(() => {
     const q = query.toLowerCase();
     return options.filter((opt) => opt.toLowerCase().includes(q));
   }, [options, query]);
+  const selectedIndex = useMemo(
+    () => filteredOptions.findIndex((opt) => opt === value),
+    [filteredOptions, value]
+  );
 
   const selectedLabel = value || placeholder;
   const accentRing =
@@ -177,10 +186,133 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       : accent === "amber"
         ? "text-amber-400"
         : "text-emerald-400";
+  const highlightTone =
+    accent === "violet"
+      ? "bg-violet-500/10 text-violet-200"
+      : accent === "amber"
+        ? "bg-amber-500/10 text-amber-200"
+        : "bg-emerald-500/10 text-emerald-200";
 
   useEffect(() => {
-    if (!open) setQuery("");
+    if (!open) {
+      setQuery("");
+      setHighlightIndex(0);
+    }
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const nextIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    setHighlightIndex(nextIndex);
+  }, [open, selectedIndex]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (highlightIndex >= filteredOptions.length) {
+      setHighlightIndex(Math.max(filteredOptions.length - 1, 0));
+      return;
+    }
+    const list = listRef.current;
+    if (!list) return;
+    const active = list.querySelector(
+      `[data-index="${highlightIndex}"]`
+    ) as HTMLElement | null;
+    active?.scrollIntoView({ block: "nearest" });
+  }, [open, highlightIndex, filteredOptions.length]);
+
+  const commitSelection = (opt: string) => {
+    onChange(opt);
+    setOpenId(null);
+    setQuery("");
+  };
+
+  const openDropdown = (focusSearch = false) => {
+    if (disabled) return;
+    setOpenId(id);
+    if (focusSearch && options.length > 6) {
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      window.requestAnimationFrame(() => buttonRef.current?.focus());
+    }
+  };
+
+  const stepHighlight = (delta: number) => {
+    if (!filteredOptions.length) return;
+    setHighlightIndex((prev) => {
+      const next = Math.max(0, Math.min(prev + delta, filteredOptions.length - 1));
+      return next;
+    });
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (disabled) return;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      if (!open) openDropdown(true);
+      else inputRef.current?.focus();
+      return;
+    }
+    if (event.altKey && event.key === "ArrowDown") {
+      event.preventDefault();
+      openDropdown(true);
+      return;
+    }
+    if (event.altKey && event.key === "ArrowUp") {
+      event.preventDefault();
+      setOpenId(null);
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!open) {
+        openDropdown();
+        return;
+      }
+      stepHighlight(1);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!open) {
+        openDropdown();
+        return;
+      }
+      stepHighlight(-1);
+      return;
+    }
+    if (event.key === "Home" && open) {
+      event.preventDefault();
+      setHighlightIndex(0);
+      return;
+    }
+    if (event.key === "End" && open) {
+      event.preventDefault();
+      setHighlightIndex(Math.max(filteredOptions.length - 1, 0));
+      return;
+    }
+    if (event.key === "Enter") {
+      if (!open) {
+        event.preventDefault();
+        openDropdown();
+        return;
+      }
+      const opt = filteredOptions[highlightIndex];
+      if (opt) {
+        event.preventDefault();
+        commitSelection(opt);
+      }
+      return;
+    }
+    if (event.key === "Escape" && open) {
+      event.preventDefault();
+      setOpenId(null);
+      return;
+    }
+    if (!open && event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
+      openDropdown(true);
+      setQuery(event.key);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -216,19 +348,30 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       <div ref={containerRef} className="relative">
         <button
           type="button"
-          className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 ${
+          ref={buttonRef}
+          role="combobox"
+          aria-controls={listId}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-activedescendant={
+            open && filteredOptions[highlightIndex]
+              ? `${id}-option-${highlightIndex}`
+              : undefined
+          }
+          className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 hover:-translate-y-[1px] hover:shadow-lg ${
             accentRing
           }
             ${
               disabled
                 ? "cursor-not-allowed border-slate-700 bg-slate-800/60 text-slate-500"
-                : "border-slate-700 bg-slate-900/60 hover:border-slate-500"
+                : "border-slate-700 bg-slate-950/60 hover:border-slate-500"
             }
           `}
           onClick={() => {
             if (disabled) return;
             setOpenId(open ? null : id);
           }}
+          onKeyDown={handleKeyDown}
         >
           <span className={value ? "text-slate-50" : "text-slate-500"}>
             {selectedLabel}
@@ -251,7 +394,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         </button>
 
         {open && !disabled && (
-          <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 shadow-xl recalc-pop">
+          <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl backdrop-blur-sm recalc-pop">
             {options.length > 6 && (
               <div className="border-b border-slate-800 p-2">
                 <input
@@ -259,32 +402,42 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar..."
+                  ref={inputRef}
+                  onKeyDown={handleKeyDown}
                   className={`w-full rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 ${
                     accentInput
                   }`}
                 />
               </div>
             )}
-            <ul className="max-h-60 overflow-y-auto py-1 text-sm">
+            <ul
+              ref={listRef}
+              id={listId}
+              role="listbox"
+              className="max-h-60 overflow-y-auto py-1 text-sm"
+            >
               {filteredOptions.length === 0 && (
                 <li className="px-3 py-2 text-xs text-slate-500">
                   Sin resultados
                 </li>
               )}
-              {filteredOptions.map((opt) => (
+              {filteredOptions.map((opt, index) => (
                 <li key={opt}>
                   <button
                     type="button"
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-800/80 ${
-                      opt === value
-                        ? accentSelected
-                        : "text-slate-100"
-                    }`}
+                    id={`${id}-option-${index}`}
+                    data-index={index}
+                    role="option"
+                    aria-selected={opt === value}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
+                      index === highlightIndex
+                        ? highlightTone
+                        : "text-slate-100 hover:bg-slate-800/80"
+                    } ${opt === value ? accentSelected : ""}`}
                     onClick={() => {
-                      onChange(opt);
-                      setOpenId(null);
-                      setQuery("");
+                      commitSelection(opt);
                     }}
+                    onMouseEnter={() => setHighlightIndex(index)}
                   >
                     <span>{opt}</span>
                     {opt === value && (
@@ -1595,14 +1748,14 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             <button
               type="button"
               onClick={limpiar}
-              className="rounded-xl border border-slate-600 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-200 hover:border-slate-400 hover:bg-slate-800/60 transition"
+              className="rounded-xl border border-slate-600 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-200 hover:border-slate-400 hover:bg-slate-800/60 hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 transition"
             >
               Limpiar
             </button>
             <button
               type="button"
               onClick={handleCalcular}
-              className={`rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md transition ${
+              className={`rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold uppercase tracking-wide text-slate-950 shadow-md hover:-translate-y-[1px] active:translate-y-0 transition ${
                 isAcademia
                   ? "bg-amber-500 shadow-amber-500/40 hover:bg-amber-400"
                   : isRegreso
@@ -1616,7 +1769,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         </div>
 
         {precioLista !== null && (
-          <section className="mt-4 rounded-2xl border border-slate-700 bg-slate-900/80 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <section className="mt-4 rounded-2xl border border-slate-700 bg-slate-900/80 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 shadow-lg recalc-fade-up">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                 Precio lista (sin beca)
@@ -1663,7 +1816,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
         {resultadoMonto !== null && resultadoPorcentaje !== null && (
           <section
-            className={`mt-4 rounded-2xl border p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 ${
+            className={`mt-4 rounded-2xl border p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 recalc-fade-up ${
               isAcademia
                 ? "border-amber-500/40 bg-amber-500/10"
                 : isRegreso
