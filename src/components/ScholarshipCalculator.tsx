@@ -280,6 +280,24 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       stepHighlight(-1);
       return;
     }
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      if (!open) {
+        openDropdown();
+        return;
+      }
+      stepHighlight(1);
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      if (!open) {
+        openDropdown();
+        return;
+      }
+      stepHighlight(-1);
+      return;
+    }
     if (event.key === "Home" && open) {
       event.preventDefault();
       setHighlightIndex(0);
