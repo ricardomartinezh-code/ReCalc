@@ -10,6 +10,7 @@ import {
   resolveAdjustments,
   resolveDefaultBenefit,
   resolveMateriaOverride,
+  resolveProgramAvailability,
   resolvePriceOverride,
 } from "../utils/adminConfig";
 
@@ -487,6 +488,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [plantel, setPlantel] = useState<string>("");
   const [plantelExtras, setPlantelExtras] = useState<string>("");
   const [materiasInscritas, setMateriasInscritas] = useState<number | "">("");
+  const [programaAcademico, setProgramaAcademico] = useState<string>("");
   const [promedio, setPromedio] = useState<string>("");
 
   const [resultadoMonto, setResultadoMonto] = useState<number | null>(null);
@@ -1044,6 +1046,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     setPlantel("");
     setPlantelExtras("");
     setMateriasInscritas("");
+    setProgramaAcademico("");
     setPromedio("");
     setResultadoMonto(null);
     setResultadoPorcentaje(null);
@@ -1081,6 +1084,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               : "nuevo";
         setPrograma(nextPrograma);
         setMateriasInscritas("");
+        setProgramaAcademico("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setError("");
@@ -1114,6 +1118,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         setPlan("");
         setPlantel("");
         setMateriasInscritas("");
+        setProgramaAcademico("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasActivos(false);
@@ -1146,6 +1151,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         setPlan("");
         setPlantel("");
         setMateriasInscritas("");
+        setProgramaAcademico("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -1168,6 +1174,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         const num = Number(val.split(" ")[0]);
         setPlan(Number.isNaN(num) ? "" : num);
         setMateriasInscritas("");
+        setProgramaAcademico("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -1197,6 +1204,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       onChange={(val) => {
         setPlantel(val);
         setMateriasInscritas("");
+        setProgramaAcademico("");
         setResultadoMonto(null);
         setResultadoPorcentaje(null);
         setExtrasSeleccionados([]);
@@ -1244,6 +1252,39 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     [ajustesAplicables]
   );
 
+  const programasDisponibles = useMemo(() => {
+    if (nivel !== "licenciatura") return [];
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    if (!plantelKey) return [];
+    const entries = resolveProgramAvailability(adminConfig, {
+      plantel: plantelKey,
+    });
+    const unique = new Set(
+      entries
+        .map((entry) => entry.programa?.trim())
+        .filter((entry): entry is string => Boolean(entry))
+    );
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, "es"));
+  }, [adminConfig, nivel, modalidad, plantel]);
+
+  const disponibilidadPrograma = useMemo(() => {
+    if (nivel !== "licenciatura") return null;
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    if (!plantelKey || !programaAcademico) return null;
+    const normalized = programaAcademico.trim().toLowerCase();
+    const entries = resolveProgramAvailability(adminConfig, {
+      plantel: plantelKey,
+    });
+    const match = entries.find(
+      (entry) => entry.programa?.trim().toLowerCase() === normalized
+    );
+    if (!match) return "sin_registro";
+    return match.activo ? "disponible" : "no_disponible";
+  }, [adminConfig, nivel, modalidad, plantel, programaAcademico]);
+
+  const plantelDisponibilidadKey =
+    modalidad === "online" ? "ONLINE" : plantel;
+
   const materiasOpciones = useMemo(
     () => [
       "1 materia",
@@ -1271,6 +1312,25 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       }}
       placeholder="Selecciona materias"
       disabled={!isRegreso || nivel !== "licenciatura"}
+      accent={accent}
+    />
+  );
+
+  const programaAcademicoSelect = (
+    <SearchableSelect
+      id="programa-academico"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Programa académico"
+      options={programasDisponibles}
+      value={programaAcademico}
+      onChange={(val) => setProgramaAcademico(val)}
+      placeholder={
+        plantelDisponibilidadKey
+          ? "Selecciona programa"
+          : "Selecciona un plantel primero"
+      }
+      disabled={!plantelDisponibilidadKey || programasDisponibles.length === 0}
       accent={accent}
     />
   );
@@ -1372,6 +1432,42 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
               <div className="grid gap-4 md:grid-cols-2">
                 {materiasSelect}
               </div>
+            )}
+            {nivel === "licenciatura" && (
+              <section className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                    Disponibilidad de programas por plantel
+                  </p>
+                  <p className="mt-1 text-sm text-slate-200">
+                    Selecciona un programa académico para conocer su disponibilidad.
+                  </p>
+                </div>
+                <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
+                  {programaAcademicoSelect}
+                  <div
+                    className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                      disponibilidadPrograma === "disponible"
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                        : disponibilidadPrograma === "no_disponible"
+                          ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                          : "border-slate-700 bg-slate-900/50 text-slate-300"
+                    }`}
+                  >
+                    {!plantelDisponibilidadKey
+                      ? "Selecciona un plantel"
+                      : programasDisponibles.length === 0
+                        ? "Sin disponibilidad cargada"
+                        : !programaAcademico
+                          ? "Selecciona un programa"
+                          : disponibilidadPrograma === "disponible"
+                            ? "Disponible"
+                            : disponibilidadPrograma === "no_disponible"
+                              ? "No disponible"
+                              : "Sin registro"}
+                  </div>
+                </div>
+              </section>
             )}
           </>
         )}

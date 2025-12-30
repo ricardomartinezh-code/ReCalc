@@ -29,6 +29,13 @@ export type AdminMateriaOverride = {
   precio: number;
 };
 
+export type AdminProgramAvailability = {
+  id: string;
+  plantel: string;
+  programa: string;
+  activo: boolean;
+};
+
 export type AdminAdjustment = {
   id: string;
   titulo: string;
@@ -55,6 +62,7 @@ export type AdminConfig = {
   priceOverrides: AdminPriceOverride[];
   materiaOverrides: AdminMateriaOverride[];
   shortcuts: AdminShortcut[];
+  programAvailability: AdminProgramAvailability[];
   adjustments: AdminAdjustment[];
 };
 
@@ -72,6 +80,7 @@ const emptyConfig = (): AdminConfig => ({
   priceOverrides: [],
   materiaOverrides: [],
   shortcuts: [],
+  programAvailability: [],
   adjustments: [],
 });
 
@@ -114,6 +123,9 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
       ? config.materiaOverrides
       : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    programAvailability: Array.isArray(config.programAvailability)
+      ? config.programAvailability
+      : [],
     adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
 };
@@ -321,5 +333,17 @@ export function resolveAdjustments(
     if (!matchPlan(entry.plan, targetPlan)) return false;
     if (!matchField(entry.plantel, targetPlantel)) return false;
     return true;
+  });
+}
+
+export function resolveProgramAvailability(
+  config: AdminConfig,
+  criteria: { plantel: string }
+) {
+  if (!config.enabled) return [];
+  const targetPlantel = normalizeValue(criteria.plantel);
+  return config.programAvailability.filter((entry) => {
+    if (!entry.programa?.trim()) return false;
+    return scoreMatch(normalizeAny(entry.plantel), targetPlantel) >= 0;
   });
 }

@@ -10,6 +10,7 @@ import {
   AdminAdjustment,
   AdminMateriaOverride,
   AdminPriceOverride,
+  AdminProgramAvailability,
   AdminShortcut,
   clearAdminConfig,
   fetchAdminConfig,
@@ -63,6 +64,7 @@ const emptyConfig = (): AdminConfig => ({
   priceOverrides: [],
   materiaOverrides: [],
   shortcuts: [],
+  programAvailability: [],
   adjustments: [],
 });
 
@@ -94,6 +96,9 @@ const normalizeLocalConfig = (config?: AdminConfig | null): AdminConfig => {
       ? config.materiaOverrides
       : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    programAvailability: Array.isArray(config.programAvailability)
+      ? config.programAvailability
+      : [],
     adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
 };
@@ -292,6 +297,16 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       const next = [...prev.adjustments];
       next[index] = { ...next[index], ...patch };
       return { ...prev, adjustments: next };
+    });
+
+  const updateProgramAvailability = (
+    index: number,
+    patch: Partial<AdminProgramAvailability>
+  ) =>
+    updateConfig((prev) => {
+      const next = [...prev.programAvailability];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, programAvailability: next };
     });
 
   const handleSave = async () => {
@@ -597,6 +612,98 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
             >
               Agregar regla
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Disponibilidad de programas por plantel
+            </h2>
+            <p className="text-xs text-slate-400">
+              Define si un programa académico está disponible en cada plantel.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {(config.programAvailability ?? []).map((entry, index) => (
+              <div
+                key={entry.id || `${entry.programa}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_1.5fr_.8fr_auto]"
+              >
+                <select
+                  value={entry.plantel}
+                  onChange={(event) =>
+                    updateProgramAvailability(index, {
+                      plantel: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={entry.programa}
+                  onChange={(event) =>
+                    updateProgramAvailability(index, {
+                      programa: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Programa académico"
+                />
+                <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="accent-emerald-500"
+                    checked={entry.activo}
+                    onChange={(event) =>
+                      updateProgramAvailability(index, {
+                        activo: event.target.checked,
+                      })
+                    }
+                  />
+                  Disponible
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateConfig((prev) => ({
+                      ...prev,
+                      programAvailability: prev.programAvailability.filter(
+                        (_, idx) => idx !== index
+                      ),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig((prev) => ({
+                  ...prev,
+                  programAvailability: [
+                    ...prev.programAvailability,
+                    {
+                      id: buildId(),
+                      plantel: plantelOptions[0] ?? "",
+                      programa: "",
+                      activo: true,
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar programa
             </button>
           </div>
         </section>
