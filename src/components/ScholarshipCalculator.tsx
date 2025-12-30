@@ -7,7 +7,9 @@ import {
   fetchAdminConfig,
   getAdminConfig,
   onAdminConfigUpdate,
+  resolveAdjustments,
   resolveDefaultBenefit,
+  resolveMateriaOverride,
   resolvePriceOverride,
 } from "../utils/adminConfig";
 
@@ -633,6 +635,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         return;
       }
       const modalidadKey = modalidad === "online" ? "online" : "presencial";
+      const materiaOverride = resolveMateriaOverride(adminConfig, {
+        programa,
+        modalidad,
+        plantel: plantelKey || "",
+        materias: Number(materiasInscritas),
+      });
+      if (materiaOverride && Number.isFinite(materiaOverride.precio)) {
+        setPrecioLista(Math.round(materiaOverride.precio * 100) / 100);
+        return;
+      }
       const materiasValue =
         REGRESO_MATERIAS.materias?.[plantelKey]?.[modalidadKey]?.[
           String(materiasInscritas)
@@ -768,6 +780,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         String(plan)
       ];
 
+    const materiaOverride =
+      isRegreso && nivel === "licenciatura" && materiasInscritas
+        ? resolveMateriaOverride(adminConfig, {
+            programa,
+            modalidad,
+            plantel: plantelKey || "",
+            materias: Number(materiasInscritas),
+          })
+        : null;
+
     const materiasPrecio =
       isRegreso && nivel === "licenciatura" && materiasInscritas
         ? REGRESO_MATERIAS.materias?.[plantelKey]?.[
@@ -778,11 +800,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     let base: number | null =
       adminOverride && Number.isFinite(adminOverride.precioLista)
         ? adminOverride.precioLista
+        : materiaOverride && Number.isFinite(materiaOverride.precio)
+          ? materiaOverride.precio
         : typeof materiasPrecio === "number"
           ? materiasPrecio
         : typeof oferta?.neto === "number"
           ? oferta.neto
-          : null;
+        : null;
 
     if (base === null) {
       const referencia = match
@@ -806,8 +830,24 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     const colegiaturaConBeneficio = descuentoExtra
       ? Math.round(colegiaturaConBeca * (1 - descuentoExtra / 100) * 100) / 100
       : colegiaturaConBeca;
+    const ajustesCalculo = resolveAdjustments(adminConfig, {
+      programa,
+      nivel,
+      modalidad,
+      plan: Number(plan),
+      plantel: plantelKey || "",
+    }).filter((entry) => entry.aplica === "calculo" || entry.aplica === "ambos");
+    const ajustesTotal = ajustesCalculo.reduce((total, entry) => {
+      const valor = Number(entry.valor) || 0;
+      if (entry.tipo === "porcentaje") {
+        return total + (colegiaturaConBeneficio * valor) / 100;
+      }
+      return total + valor;
+    }, 0);
     const montoFinal =
-      Math.round((colegiaturaConBeneficio + extrasAplicados) * 100) / 100;
+      Math.round(
+        (colegiaturaConBeneficio + extrasAplicados + ajustesTotal) * 100
+      ) / 100;
 
     setResultadoMonto(montoFinal);
     setResultadoPorcentaje(porcentajeAplicado);
@@ -993,10 +1033,33 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const adminShortcuts = useMemo(
     () =>
-      adminConfig.shortcuts.filter(
-        (entry) => entry.label?.trim() && entry.url?.trim()
+      adminConfig.shortcuts.filter((entry) => {
+        if (!entry.label?.trim() || !entry.url?.trim()) return false;
+        const scopes = entry.programas ?? [];
+        if (!scopes.length) return true;
+        return scopes.includes(programa);
+      }),
+    [adminConfig.shortcuts, programa]
+  );
+
+  const ajustesAplicables = useMemo(() => {
+    if (!nivel || !modalidad || !plan) return [];
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    return resolveAdjustments(adminConfig, {
+      programa,
+      nivel,
+      modalidad,
+      plan: Number(plan),
+      plantel: plantelKey || "",
+    });
+  }, [adminConfig, nivel, modalidad, plan, plantel, programa]);
+
+  const ajustesUI = useMemo(
+    () =>
+      ajustesAplicables.filter(
+        (entry) => entry.aplica === "ui" || entry.aplica === "ambos"
       ),
-    [adminConfig.shortcuts]
+    [ajustesAplicables]
   );
 
   const materiasOpciones = useMemo(
@@ -1661,6 +1724,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     maximumFractionDigits: 2,
                   })}
                 </p>
+              )}
+              {ajustesUI.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs text-slate-200/80">
+                  {ajustesUI.map((ajuste) => (
+                    <p key={ajuste.id || ajuste.titulo}>
+                      {ajuste.titulo}:{" "}
+                      {ajuste.tipo === "porcentaje"
+                        ? `${ajuste.valor}%`
+                        : Number(ajuste.valor || 0).toLocaleString("es-MX", {
+                            style: "currency",
+                            currency: "MXN",
+                            maximumFractionDigits: 2,
+                          })}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
             <div className="text-right">

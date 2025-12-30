@@ -18,6 +18,30 @@ export type AdminShortcut = {
   id: string;
   label: string;
   url: string;
+  programas: string[];
+};
+
+export type AdminMateriaOverride = {
+  programa: string;
+  modalidad: string;
+  plantel: string;
+  materias: number;
+  precio: number;
+};
+
+export type AdminAdjustment = {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  programa: string;
+  nivel: string;
+  modalidad: string;
+  plan: string;
+  plantel: string;
+  activo: boolean;
+  aplica: "ui" | "calculo" | "ambos";
+  tipo: "monto" | "porcentaje";
+  valor: number;
 };
 
 export type AdminConfig = {
@@ -29,7 +53,9 @@ export type AdminConfig = {
     };
   };
   priceOverrides: AdminPriceOverride[];
+  materiaOverrides: AdminMateriaOverride[];
   shortcuts: AdminShortcut[];
+  adjustments: AdminAdjustment[];
 };
 
 const STORAGE_PREFIX = "recalc_admin_config_cache_";
@@ -44,7 +70,9 @@ const emptyConfig = (): AdminConfig => ({
     },
   },
   priceOverrides: [],
+  materiaOverrides: [],
   shortcuts: [],
+  adjustments: [],
 });
 
 const normalizeValue = (value: string) => value.trim().toLowerCase();
@@ -82,7 +110,11 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
     priceOverrides: Array.isArray(config.priceOverrides)
       ? config.priceOverrides
       : [],
+    materiaOverrides: Array.isArray(config.materiaOverrides)
+      ? config.materiaOverrides
+      : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
 };
 
@@ -214,4 +246,80 @@ export function resolvePriceOverride(
     }
   });
   return best;
+}
+
+export function resolveMateriaOverride(
+  config: AdminConfig,
+  criteria: {
+    programa: string;
+    modalidad: string;
+    plantel: string;
+    materias: number;
+  }
+) {
+  if (!config.enabled) return null;
+  const targetPrograma = normalizeValue(criteria.programa);
+  const targetModalidad = normalizeValue(criteria.modalidad);
+  const targetPlantel = normalizeValue(criteria.plantel);
+  const targetMaterias = Number(criteria.materias);
+  let best: AdminMateriaOverride | null = null;
+  let bestScore = -1;
+  config.materiaOverrides.forEach((entry) => {
+    if (normalizeValue(entry.programa) !== targetPrograma) return;
+    if (Number(entry.materias) !== targetMaterias) return;
+    const modalidadScore = scoreMatch(
+      normalizeAny(entry.modalidad),
+      targetModalidad
+    );
+    if (modalidadScore < 0) return;
+    const plantelScore = scoreMatch(
+      normalizeAny(entry.plantel),
+      targetPlantel
+    );
+    if (plantelScore < 0) return;
+    const total = modalidadScore + plantelScore;
+    if (total > bestScore) {
+      bestScore = total;
+      best = entry;
+    }
+  });
+  return best;
+}
+
+const matchField = (value: string, target: string) => {
+  const score = scoreMatch(normalizeAny(value), target);
+  return score >= 0;
+};
+
+const matchPlan = (value: string, target: number) => {
+  const normalized = normalizeAny(value);
+  if (normalized === "*") return true;
+  return Number(normalized) === Number(target);
+};
+
+export function resolveAdjustments(
+  config: AdminConfig,
+  criteria: {
+    programa: string;
+    nivel: string;
+    modalidad: string;
+    plan: number;
+    plantel: string;
+  }
+) {
+  if (!config.enabled) return [];
+  const targetPrograma = normalizeValue(criteria.programa);
+  const targetNivel = normalizeValue(criteria.nivel);
+  const targetModalidad = normalizeValue(criteria.modalidad);
+  const targetPlantel = normalizeValue(criteria.plantel);
+  const targetPlan = Number(criteria.plan);
+  return config.adjustments.filter((entry) => {
+    if (!entry.activo) return false;
+    if (!matchField(entry.programa, targetPrograma)) return false;
+    if (!matchField(entry.nivel, targetNivel)) return false;
+    if (!matchField(entry.modalidad, targetModalidad)) return false;
+    if (!matchPlan(entry.plan, targetPlan)) return false;
+    if (!matchField(entry.plantel, targetPlantel)) return false;
+    return true;
+  });
 }

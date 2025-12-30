@@ -7,6 +7,8 @@ import { getStoredSession } from "../utils/auth";
 import {
   AdminBenefitRule,
   AdminConfig,
+  AdminAdjustment,
+  AdminMateriaOverride,
   AdminPriceOverride,
   AdminShortcut,
   clearAdminConfig,
@@ -40,6 +42,16 @@ const programaOptions: Array<{ value: Programa; label: string }> = [
   { value: "academia", label: "Academia" },
 ];
 
+const programaOptionsAll = [
+  { value: "*", label: "Todos" },
+  ...programaOptions,
+];
+
+const nivelOptionsAll = [
+  { value: "*", label: "Todos" },
+  ...nivelOptions,
+];
+
 const ADMIN_SLUGS = ["unidep", "utc", "ula"];
 const ADMIN_LAST_SLUG_KEY = "recalc_admin_last_slug";
 const ADMIN_DRAFT_PREFIX = "recalc_admin_draft_";
@@ -49,7 +61,9 @@ const emptyConfig = (): AdminConfig => ({
   enabled: true,
   defaults: { beneficio: { rules: [] } },
   priceOverrides: [],
+  materiaOverrides: [],
   shortcuts: [],
+  adjustments: [],
 });
 
 const buildId = () => `rule-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -221,11 +235,28 @@ export default function AdminPage() {
       return { ...prev, priceOverrides: next };
     });
 
-  const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
+const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
+  updateConfig((prev) => {
+    const next = [...prev.shortcuts];
+    next[index] = { ...next[index], ...patch };
+    return { ...prev, shortcuts: next };
+  });
+
+  const updateMateriaOverride = (
+    index: number,
+    patch: Partial<AdminMateriaOverride>
+  ) =>
     updateConfig((prev) => {
-      const next = [...prev.shortcuts];
+      const next = [...prev.materiaOverrides];
       next[index] = { ...next[index], ...patch };
-      return { ...prev, shortcuts: next };
+      return { ...prev, materiaOverrides: next };
+    });
+
+  const updateAdjustment = (index: number, patch: Partial<AdminAdjustment>) =>
+    updateConfig((prev) => {
+      const next = [...prev.adjustments];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, adjustments: next };
     });
 
   const handleSave = async () => {
@@ -538,6 +569,315 @@ export default function AdminPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Correcciones de materias (Regresos)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Overrides por materias inscritas. Se aplican sobre los precios base.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {config.materiaOverrides.map((override, index) => (
+              <div
+                key={`${override.programa}-${override.materias}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1.2fr_.7fr_.9fr_auto]"
+              >
+                <select
+                  value={override.programa}
+                  onChange={(event) =>
+                    updateMateriaOverride(index, { programa: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {programaOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={override.modalidad}
+                  onChange={(event) =>
+                    updateMateriaOverride(index, { modalidad: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {modalidadOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={override.plantel}
+                  onChange={(event) =>
+                    updateMateriaOverride(index, { plantel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="*">Todos los planteles</option>
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={override.materias}
+                  onChange={(event) =>
+                    updateMateriaOverride(index, {
+                      materias: Number(event.target.value) || 1,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <option key={value} value={value}>
+                      {value} materia{value === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={override.precio}
+                  onChange={(event) =>
+                    updateMateriaOverride(index, {
+                      precio: Number(event.target.value),
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Precio"
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateConfig((prev) => ({
+                      ...prev,
+                      materiaOverrides: prev.materiaOverrides.filter(
+                        (_, idx) => idx !== index
+                      ),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig((prev) => ({
+                  ...prev,
+                  materiaOverrides: [
+                    ...prev.materiaOverrides,
+                    {
+                      programa: "regreso",
+                      modalidad: "*",
+                      plantel: "*",
+                      materias: 1,
+                      precio: 0,
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar correccion de materias
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Ajustes y beneficios adicionales
+            </h2>
+            <p className="text-xs text-slate-400">
+              Agrega tarjetas opcionales que pueden afectar la UI y/o el calculo.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {config.adjustments.map((adjustment, index) => (
+              <div
+                key={adjustment.id || `${adjustment.titulo}-${index}`}
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.4fr_.9fr_.9fr_.9fr_.7fr_.7fr_.8fr_.8fr_auto]"
+              >
+                <input
+                  value={adjustment.titulo}
+                  onChange={(event) =>
+                    updateAdjustment(index, { titulo: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Titulo"
+                />
+                <input
+                  value={adjustment.descripcion}
+                  onChange={(event) =>
+                    updateAdjustment(index, { descripcion: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Descripcion"
+                />
+                <select
+                  value={adjustment.programa}
+                  onChange={(event) =>
+                    updateAdjustment(index, { programa: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {programaOptionsAll.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={adjustment.nivel}
+                  onChange={(event) =>
+                    updateAdjustment(index, { nivel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {nivelOptionsAll.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={adjustment.modalidad}
+                  onChange={(event) =>
+                    updateAdjustment(index, { modalidad: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {modalidadOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={adjustment.plan}
+                  onChange={(event) =>
+                    updateAdjustment(index, { plan: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Plan o *"
+                />
+                <select
+                  value={adjustment.plantel}
+                  onChange={(event) =>
+                    updateAdjustment(index, { plantel: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="*">Todos</option>
+                  {plantelOptions.map((plantel) => (
+                    <option key={plantel} value={plantel}>
+                      {plantel}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={adjustment.aplica}
+                  onChange={(event) =>
+                    updateAdjustment(index, {
+                      aplica: event.target.value as AdminAdjustment["aplica"],
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="ui">Solo UI</option>
+                  <option value="calculo">Solo calculo</option>
+                  <option value="ambos">UI + calculo</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={adjustment.tipo}
+                    onChange={(event) =>
+                      updateAdjustment(index, {
+                        tipo: event.target.value as AdminAdjustment["tipo"],
+                      })
+                    }
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    <option value="monto">Monto</option>
+                    <option value="porcentaje">%</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={adjustment.valor}
+                    onChange={(event) =>
+                      updateAdjustment(index, {
+                        valor: Number(event.target.value),
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    placeholder="Valor"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                  <input
+                    type="checkbox"
+                    className="accent-emerald-500"
+                    checked={adjustment.activo}
+                    onChange={(event) =>
+                      updateAdjustment(index, { activo: event.target.checked })
+                    }
+                  />
+                  Activo
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateConfig((prev) => ({
+                      ...prev,
+                      adjustments: prev.adjustments.filter(
+                        (_, idx) => idx !== index
+                      ),
+                    }))
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig((prev) => ({
+                  ...prev,
+                  adjustments: [
+                    ...prev.adjustments,
+                    {
+                      id: buildId(),
+                      titulo: "Ajuste adicional",
+                      descripcion: "",
+                      programa: "*",
+                      nivel: "*",
+                      modalidad: "*",
+                      plan: "*",
+                      plantel: "*",
+                      activo: true,
+                      aplica: "ui",
+                      tipo: "monto",
+                      valor: 0,
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar ajuste
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
               Correcciones rapidas de precio
             </h2>
             <p className="text-xs text-slate-400">
@@ -691,43 +1031,78 @@ export default function AdminPage() {
             </p>
           </div>
           <div className="space-y-3">
-            {config.shortcuts.map((shortcut, index) => (
-              <div
-                key={shortcut.id || `${shortcut.label}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_2fr_auto]"
-              >
-                <input
-                  value={shortcut.label}
-                  onChange={(event) =>
-                    updateShortcut(index, { label: event.target.value })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="Etiqueta"
-                />
-                <input
-                  value={shortcut.url}
-                  onChange={(event) =>
-                    updateShortcut(index, {
-                      url: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="https://..."
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateConfig((prev) => ({
-                      ...prev,
-                      shortcuts: prev.shortcuts.filter((_, idx) => idx !== index),
-                    }))
-                  }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+            {config.shortcuts.map((shortcut, index) => {
+              const programas =
+                shortcut.programas && shortcut.programas.length
+                  ? shortcut.programas
+                  : ["nuevo", "regreso", "academia"];
+              return (
+                <div
+                  key={shortcut.id || `${shortcut.label}-${index}`}
+                  className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_2fr_auto]"
                 >
-                  Quitar
-                </button>
-              </div>
-            ))}
+                  <input
+                    value={shortcut.label}
+                    onChange={(event) =>
+                      updateShortcut(index, { label: event.target.value })
+                    }
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    placeholder="Etiqueta"
+                  />
+                  <input
+                    value={shortcut.url}
+                    onChange={(event) =>
+                      updateShortcut(index, {
+                        url: event.target.value,
+                      })
+                    }
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    placeholder="https://..."
+                  />
+                  <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+                    {programaOptions.map((option) => {
+                      const selected = programas.includes(option.value);
+                      return (
+                        <label
+                          key={`${shortcut.id}-${option.value}`}
+                          className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide transition ${
+                            selected
+                              ? "border-emerald-500/50 text-emerald-200"
+                              : "border-slate-700 text-slate-300"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="accent-emerald-500"
+                            checked={selected}
+                            onChange={() => {
+                              const current = programas;
+                              const next = selected
+                                ? current.filter((entry) => entry !== option.value)
+                                : [...current, option.value];
+                              updateShortcut(index, { programas: next });
+                            }}
+                          />
+                          {option.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateConfig((prev) => ({
+                        ...prev,
+                        shortcuts: prev.shortcuts.filter((_, idx) => idx !== index),
+                      }))
+                    }
+                    className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              );
+            })}
             <button
               type="button"
               onClick={() =>
@@ -739,6 +1114,7 @@ export default function AdminPage() {
                       id: buildId(),
                       label: "Acceso rapido",
                       url: "",
+                      programas: ["nuevo", "regreso", "academia"],
                     },
                   ],
                 }))

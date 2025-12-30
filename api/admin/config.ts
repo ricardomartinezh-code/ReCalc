@@ -7,7 +7,9 @@ const emptyConfig = {
   enabled: true,
   defaults: { beneficio: { rules: [] } },
   priceOverrides: [],
+  materiaOverrides: [],
   shortcuts: [],
+  adjustments: [],
 };
 
 function parseBody(req: any) {
@@ -43,7 +45,11 @@ function normalizeConfig(config: any) {
     priceOverrides: Array.isArray(config.priceOverrides)
       ? config.priceOverrides
       : [],
+    materiaOverrides: Array.isArray(config.materiaOverrides)
+      ? config.materiaOverrides
+      : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
 }
 
