@@ -97,7 +97,14 @@ const normalizeLocalConfig = (config?: AdminConfig | null): AdminConfig => {
       : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
     programAvailability: Array.isArray(config.programAvailability)
-      ? config.programAvailability
+      ? config.programAvailability.map((entry) => ({
+          id: String(entry.id ?? ""),
+          plantel: String(entry.plantel ?? ""),
+          programa: String(entry.programa ?? ""),
+          modalidad: String(entry.modalidad ?? "presencial"),
+          horario: String(entry.horario ?? ""),
+          activo: typeof entry.activo === "boolean" ? entry.activo : true,
+        }))
       : [],
     adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
@@ -629,7 +636,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             {(config.programAvailability ?? []).map((entry, index) => (
               <div
                 key={entry.id || `${entry.programa}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_1.5fr_.8fr_auto]"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.4fr_1fr_1.4fr_.7fr_auto]"
               >
                 <select
                   value={entry.plantel}
@@ -655,6 +662,29 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   }
                   className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
                   placeholder="Programa académico"
+                />
+                <select
+                  value={entry.modalidad}
+                  onChange={(event) =>
+                    updateProgramAvailability(index, {
+                      modalidad: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  <option value="presencial">Escolarizado</option>
+                  <option value="mixta">Ejecutivo</option>
+                  <option value="online">Online</option>
+                </select>
+                <input
+                  value={entry.horario}
+                  onChange={(event) =>
+                    updateProgramAvailability(index, {
+                      horario: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Horario (opcional)"
                 />
                 <label className="flex items-center gap-2 text-[11px] text-slate-300">
                   <input
@@ -696,6 +726,8 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       id: buildId(),
                       plantel: plantelOptions[0] ?? "",
                       programa: "",
+                      modalidad: "presencial",
+                      horario: "",
                       activo: true,
                     },
                   ],

@@ -1285,17 +1285,22 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
   const availabilityMerged = useMemo(() => {
     const map = new Map<string, AdminProgramAvailability>();
-    availabilityRemote.forEach((entry) => {
+    const buildKey = (entry: AdminProgramAvailability) => {
       const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
       const programaKey = String(entry.programa ?? "").trim().toLowerCase();
-      if (!plantelKey || !programaKey) return;
-      map.set(`${plantelKey}::${programaKey}`, entry);
+      const modalidadKey = String(entry.modalidad ?? "").trim().toLowerCase();
+      if (!plantelKey || !programaKey || !modalidadKey) return "";
+      return `${plantelKey}::${programaKey}::${modalidadKey}`;
+    };
+    availabilityRemote.forEach((entry) => {
+      const key = buildKey(entry);
+      if (!key) return;
+      map.set(key, entry);
     });
     adminConfig.programAvailability.forEach((entry) => {
-      const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
-      const programaKey = String(entry.programa ?? "").trim().toLowerCase();
-      if (!plantelKey || !programaKey) return;
-      map.set(`${plantelKey}::${programaKey}`, entry);
+      const key = buildKey(entry);
+      if (!key) return;
+      map.set(key, entry);
     });
     return Array.from(map.values());
   }, [availabilityRemote, adminConfig.programAvailability]);
@@ -1317,7 +1322,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return Array.from(unique).sort((a, b) => a.localeCompare(b, "es"));
   }, [adminConfig, availabilityMerged, nivel, modalidad, plantel]);
 
-  const disponibilidadPrograma = useMemo(() => {
+  const disponibilidadDetalle = useMemo(() => {
     if (nivel !== "licenciatura") return null;
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     if (!plantelKey || !programaAcademico) return null;
@@ -1326,13 +1331,47 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       adminConfig,
       { plantel: plantelKey },
       availabilityMerged
+    ).filter((entry) => entry.programa?.trim().toLowerCase() === normalized);
+    if (!entries.length) return { status: "sin_registro", modalidades: [] };
+
+    const modalidadLabels: Record<string, string> = {
+      presencial: "Escolarizado",
+      mixta: "Ejecutivo",
+      online: "Online",
+    };
+
+    const modalidadesMap = new Map<string, string[]>();
+    entries.forEach((entry) => {
+      if (!entry.activo) return;
+      const modalidadKey = String(entry.modalidad ?? "").trim().toLowerCase();
+      if (!modalidadKey) return;
+      const horario = String(entry.horario ?? "").trim();
+      const existing = modalidadesMap.get(modalidadKey) ?? [];
+      if (horario && !existing.includes(horario)) {
+        modalidadesMap.set(modalidadKey, [...existing, horario]);
+      } else if (!horario && !existing.length) {
+        modalidadesMap.set(modalidadKey, existing);
+      }
+    });
+
+    const modalidades = Array.from(modalidadesMap.entries()).map(
+      ([modalidad, horarios]) => ({
+        modalidad,
+        label: modalidadLabels[modalidad] ?? modalidad,
+        horarios,
+      })
     );
-    const match = entries.find(
-      (entry) => entry.programa?.trim().toLowerCase() === normalized
-    );
-    if (!match) return "sin_registro";
-    return match.activo ? "disponible" : "no_disponible";
-  }, [adminConfig, nivel, modalidad, plantel, programaAcademico]);
+
+    const disponible = modalidades.length > 0;
+    return { status: disponible ? "disponible" : "no_disponible", modalidades };
+  }, [
+    adminConfig,
+    availabilityMerged,
+    nivel,
+    modalidad,
+    plantel,
+    programaAcademico,
+  ]);
 
   const plantelDisponibilidadKey =
     modalidad === "online" ? "ONLINE" : plantel;
@@ -1499,9 +1538,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                   {programaAcademicoSelect}
                   <div
                     className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
-                      disponibilidadPrograma === "disponible"
+                      disponibilidadDetalle?.status === "disponible"
                         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                        : disponibilidadPrograma === "no_disponible"
+                        : disponibilidadDetalle?.status === "no_disponible"
                           ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
                           : "border-slate-700 bg-slate-900/50 text-slate-300"
                     }`}
@@ -1512,13 +1551,37 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                         ? "Sin disponibilidad cargada"
                         : !programaAcademico
                           ? "Selecciona un programa"
-                          : disponibilidadPrograma === "disponible"
+                          : disponibilidadDetalle?.status === "disponible"
                             ? "Disponible"
-                            : disponibilidadPrograma === "no_disponible"
+                            : disponibilidadDetalle?.status === "no_disponible"
                               ? "No disponible"
                               : "Sin registro"}
                   </div>
                 </div>
+                {disponibilidadDetalle?.status === "disponible" &&
+                  disponibilidadDetalle.modalidades.length > 0 && (
+                    <div className="mt-3 grid gap-2 text-xs text-slate-200">
+                      {disponibilidadDetalle.modalidades.map((entry) => (
+                        <div
+                          key={entry.modalidad}
+                          className="flex flex-col gap-1 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
+                        >
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                            {entry.label}
+                          </span>
+                          {entry.horarios?.length ? (
+                            <span className="text-slate-200">
+                              Horario: {entry.horarios.join(" / ")}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">
+                              Horario no disponible
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </section>
             )}
           </>

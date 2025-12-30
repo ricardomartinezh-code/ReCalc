@@ -51,7 +51,14 @@ function normalizeConfig(config: any) {
       : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
     programAvailability: Array.isArray(config.programAvailability)
-      ? config.programAvailability
+      ? config.programAvailability.map((entry: any) => ({
+          id: String(entry?.id ?? ""),
+          plantel: String(entry?.plantel ?? ""),
+          programa: String(entry?.programa ?? ""),
+          modalidad: String(entry?.modalidad ?? "presencial"),
+          horario: String(entry?.horario ?? ""),
+          activo: typeof entry?.activo === "boolean" ? entry.activo : true,
+        }))
       : [],
     adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };

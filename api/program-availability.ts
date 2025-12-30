@@ -22,40 +22,15 @@ const parseAvailability = (raw: string) => {
   if (["si", "sí", "true", "1", "disponible", "activo"].includes(normalized)) {
     return true;
   }
+  if (["✓", "✔", "✅"].includes(raw?.trim())) {
+    return true;
+  }
   if (["no", "false", "0", "no disponible", "inactivo"].includes(normalized)) {
     return false;
   }
   return true;
 };
 
-const mapHeaders = (headers: string[]) => {
-  let plantelIdx = -1;
-  let programaIdx = -1;
-  let disponibilidadIdx = -1;
-
-  headers.forEach((raw, index) => {
-    const header = normalizeText(raw);
-    if (plantelIdx < 0 && header.includes("plantel")) plantelIdx = index;
-    if (
-      programaIdx < 0 &&
-      (header.includes("programa") ||
-        header.includes("licenciatura") ||
-        header.includes("carrera"))
-    ) {
-      programaIdx = index;
-    }
-    if (
-      disponibilidadIdx < 0 &&
-      (header.includes("dispon") ||
-        header.includes("estatus") ||
-        header.includes("activo"))
-    ) {
-      disponibilidadIdx = index;
-    }
-  });
-
-  return { plantelIdx, programaIdx, disponibilidadIdx };
-};
 
 const getAccessToken = async () => {
   if (!CREDENTIALS) throw new Error("Missing service account credentials.");
@@ -102,35 +77,86 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
   return data.values ?? [];
 };
 
-const buildAvailability = (rows: string[][]) => {
+const buildAvailability = (rows: string[][], plantelName: string) => {
   if (!rows.length) return [];
-  const headers = rows[0] ?? [];
-  const { plantelIdx, programaIdx, disponibilidadIdx } = mapHeaders(headers);
-  if (plantelIdx < 0 || programaIdx < 0) return [];
+  const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? "")));
+  const headerIndex = normalizedRows.findIndex((row) =>
+    row.some((cell) => normalizeText(cell) === "c1 2026")
+  );
+  if (headerIndex < 0) return [];
 
-  return rows.slice(1).reduce<any[]>((acc, row, rowIndex) => {
-    const plantel = String(row[plantelIdx] ?? "").trim();
-    const programa = String(row[programaIdx] ?? "").trim();
-    if (!plantel || !programa) return acc;
-    const disponibilidadRaw =
-      disponibilidadIdx >= 0 ? String(row[disponibilidadIdx] ?? "") : "";
-    acc.push({
-      id: `sheet-${rowIndex}`,
-      plantel,
-      programa,
-      activo: parseAvailability(disponibilidadRaw),
-    });
-    return acc;
-  }, []);
+  const yearIndex = normalizedRows.findIndex(
+    (row, idx) =>
+      idx > headerIndex && row.some((cell) => normalizeText(cell) === "2026")
+  );
+  if (yearIndex < 0) return [];
+
+  const modalidadIndex = yearIndex + 1;
+  const modalidadRow = normalizedRows[modalidadIndex] ?? [];
+  let escolarizadoCol = modalidadRow.findIndex(
+    (cell) => normalizeText(cell) === "escolarizado"
+  );
+  let ejecutivoCol = modalidadRow.findIndex(
+    (cell) => normalizeText(cell) === "ejecutivo"
+  );
+  if (escolarizadoCol < 0) escolarizadoCol = 2;
+  if (ejecutivoCol < 0) ejecutivoCol = 3;
+
+  const horariosIndex = normalizedRows.findIndex((row) =>
+    row.some((cell) => normalizeText(cell) === "horarios")
+  );
+  const scheduleColumns = [7, 8, 9, 10];
+
+  return normalizedRows.slice(modalidadIndex + 1).reduce<any[]>(
+    (acc, row, rowIndex) => {
+      const programa = String(row[1] ?? "").trim();
+      if (!programa) return acc;
+      const escolarizadoRaw = String(row[escolarizadoCol] ?? "");
+      const ejecutivoRaw = String(row[ejecutivoCol] ?? "");
+      const horariosRaw = scheduleColumns
+        .map((idx) => String(row[idx] ?? "").trim())
+        .filter(Boolean)
+        .join(" / ");
+      const horario = horariosIndex >= 0 ? horariosRaw : "";
+
+      if (escolarizadoCol >= 0) {
+        acc.push({
+          id: `sheet-${plantelName}-${rowIndex}-presencial`,
+          plantel: plantelName,
+          programa,
+          modalidad: "presencial",
+          horario,
+          activo: parseAvailability(escolarizadoRaw),
+        });
+      }
+      if (ejecutivoCol >= 0) {
+        acc.push({
+          id: `sheet-${plantelName}-${rowIndex}-mixta`,
+          plantel: plantelName,
+          programa,
+          modalidad: "mixta",
+          horario,
+          activo: parseAvailability(ejecutivoRaw),
+        });
+      }
+      return acc;
+    },
+    []
+  );
 };
 
 const fetchAvailability = async () => {
   const token = await getAccessToken();
   const sheetNames = await fetchSheetNames(token);
   const allRows = await Promise.all(
-    sheetNames.map((sheetName) => fetchSheetValues(token, sheetName))
+    sheetNames.map(async (sheetName) => ({
+      sheetName,
+      rows: await fetchSheetValues(token, sheetName),
+    }))
   );
-  return allRows.flatMap((rows) => buildAvailability(rows));
+  return allRows.flatMap(({ sheetName, rows }) =>
+    buildAvailability(rows, sheetName)
+  );
 };
 
 export default async function handler(req: any, res: any) {
