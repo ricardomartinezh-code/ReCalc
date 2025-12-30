@@ -338,11 +338,13 @@ export function resolveAdjustments(
 
 export function resolveProgramAvailability(
   config: AdminConfig,
-  criteria: { plantel: string }
+  criteria: { plantel: string },
+  entriesOverride?: AdminProgramAvailability[]
 ) {
   if (!config.enabled) return [];
   const targetPlantel = normalizeValue(criteria.plantel);
-  return config.programAvailability.filter((entry) => {
+  const entries = entriesOverride ?? config.programAvailability;
+  return entries.filter((entry) => {
     if (!entry.programa?.trim()) return false;
     return scoreMatch(normalizeAny(entry.plantel), targetPlantel) >= 0;
   });

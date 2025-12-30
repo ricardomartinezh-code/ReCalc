@@ -13,6 +13,7 @@ import {
   resolveProgramAvailability,
   resolvePriceOverride,
 } from "../utils/adminConfig";
+import type { AdminProgramAvailability } from "../utils/adminConfig";
 
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Modalidad = "presencial" | "online" | "mixta";
@@ -518,6 +519,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [adminConfig, setAdminConfig] = useState(() =>
     getAdminConfig(university)
   );
+  const [availabilityRemote, setAvailabilityRemote] = useState<
+    AdminProgramAvailability[]
+  >([]);
 
   const handleLogout = () => {
     clearStoredSession();
@@ -770,6 +774,33 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       active = false;
       window.clearInterval(interval);
       unsubscribe();
+    };
+  }, [university]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAvailability = async () => {
+      try {
+        const response = await fetch(
+          `/api/program-availability?slug=${encodeURIComponent(university)}`
+        );
+        if (!response.ok) return;
+        const data = (await response.json().catch(() => ({}))) as {
+          availability?: AdminProgramAvailability[];
+        };
+        if (!active) return;
+        if (Array.isArray(data.availability)) {
+          setAvailabilityRemote(data.availability);
+        }
+      } catch (err) {
+        // Ignore availability failures
+      }
+    };
+    void loadAvailability();
+    const interval = window.setInterval(loadAvailability, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
     };
   }, [university]);
 
@@ -1252,29 +1283,50 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     [ajustesAplicables]
   );
 
+  const availabilityMerged = useMemo(() => {
+    const map = new Map<string, AdminProgramAvailability>();
+    availabilityRemote.forEach((entry) => {
+      const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
+      const programaKey = String(entry.programa ?? "").trim().toLowerCase();
+      if (!plantelKey || !programaKey) return;
+      map.set(`${plantelKey}::${programaKey}`, entry);
+    });
+    adminConfig.programAvailability.forEach((entry) => {
+      const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
+      const programaKey = String(entry.programa ?? "").trim().toLowerCase();
+      if (!plantelKey || !programaKey) return;
+      map.set(`${plantelKey}::${programaKey}`, entry);
+    });
+    return Array.from(map.values());
+  }, [availabilityRemote, adminConfig.programAvailability]);
+
   const programasDisponibles = useMemo(() => {
     if (nivel !== "licenciatura") return [];
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     if (!plantelKey) return [];
-    const entries = resolveProgramAvailability(adminConfig, {
-      plantel: plantelKey,
-    });
+    const entries = resolveProgramAvailability(
+      adminConfig,
+      { plantel: plantelKey },
+      availabilityMerged
+    );
     const unique = new Set(
       entries
         .map((entry) => entry.programa?.trim())
         .filter((entry): entry is string => Boolean(entry))
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b, "es"));
-  }, [adminConfig, nivel, modalidad, plantel]);
+  }, [adminConfig, availabilityMerged, nivel, modalidad, plantel]);
 
   const disponibilidadPrograma = useMemo(() => {
     if (nivel !== "licenciatura") return null;
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     if (!plantelKey || !programaAcademico) return null;
     const normalized = programaAcademico.trim().toLowerCase();
-    const entries = resolveProgramAvailability(adminConfig, {
-      plantel: plantelKey,
-    });
+    const entries = resolveProgramAvailability(
+      adminConfig,
+      { plantel: plantelKey },
+      availabilityMerged
+    );
     const match = entries.find(
       (entry) => entry.programa?.trim().toLowerCase() === normalized
     );

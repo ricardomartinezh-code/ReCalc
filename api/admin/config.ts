@@ -9,6 +9,7 @@ const emptyConfig = {
   priceOverrides: [],
   materiaOverrides: [],
   shortcuts: [],
+  programAvailability: [],
   adjustments: [],
 };
 
@@ -49,6 +50,9 @@ function normalizeConfig(config: any) {
       ? config.materiaOverrides
       : [],
     shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    programAvailability: Array.isArray(config.programAvailability)
+      ? config.programAvailability
+      : [],
     adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
   };
 }
