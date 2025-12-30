@@ -491,6 +491,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [materiasInscritas, setMateriasInscritas] = useState<number | "">("");
   const [programaAcademico, setProgramaAcademico] = useState<string>("");
   const [promedio, setPromedio] = useState<string>("");
+  const [plantelDisponibilidadManual, setPlantelDisponibilidadManual] =
+    useState<string>("");
 
   const [resultadoMonto, setResultadoMonto] = useState<number | null>(null);
   const [resultadoPorcentaje, setResultadoPorcentaje] = useState<number | null>(
@@ -776,6 +778,12 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       unsubscribe();
     };
   }, [university]);
+
+  useEffect(() => {
+    if (plantel) {
+      setPlantelDisponibilidadManual("");
+    }
+  }, [plantel]);
 
   useEffect(() => {
     let active = true;
@@ -1374,9 +1382,16 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   ]);
 
   const plantelDisponibilidadKey =
-    modalidad === "online" ? "ONLINE" : plantel;
+    modalidad === "online"
+      ? "ONLINE"
+      : plantel || plantelDisponibilidadManual;
 
-  const materiasOpciones = useMemo(
+  const lineaNegocioPrograma = useMemo(() => {
+    if (!programaAcademico) return null;
+    return resolveLineaNegocio(programaAcademico);
+  }, [programaAcademico]);
+
+const materiasOpciones = useMemo(
     () => [
       "1 materia",
       "2 materias",
@@ -1386,6 +1401,33 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     ],
     []
   );
+
+  const normalizeProgramaText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const resolveLineaNegocio = (programa: string) => {
+    const normalized = normalizeProgramaText(programa);
+    const saludTargets = [
+      "enfermeria",
+      "fisioterapia",
+      "psicologia",
+      "nutricion",
+    ];
+    if (saludTargets.some((target) => normalized.includes(target))) {
+      return { key: "salud", label: "Salud" };
+    }
+    if (normalized.includes("bachiller")) {
+      return { key: "preparatoria", label: "Bachillerato" };
+    }
+    if (normalized.includes("maestr")) {
+      return { key: "maestria", label: "Maestría" };
+    }
+    return { key: "licenciatura", label: "Licenciatura" };
+  };
 
   const materiasSelect = (
     <SearchableSelect
@@ -1422,6 +1464,24 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           : "Selecciona un plantel primero"
       }
       disabled={!plantelDisponibilidadKey || programasDisponibles.length === 0}
+      accent={accent}
+    />
+  );
+
+  const plantelDisponibilidadSelect = (
+    <SearchableSelect
+      id="plantel-disponibilidad"
+      openId={openSelectId}
+      setOpenId={setOpenSelectId}
+      label="Plantel para disponibilidad"
+      options={plantelesDisponibles}
+      value={plantelDisponibilidadManual}
+      onChange={(val) => {
+        setPlantelDisponibilidadManual(val);
+        setProgramaAcademico("");
+      }}
+      placeholder="Selecciona plantel"
+      disabled={Boolean(plantel)}
       accent={accent}
     />
   );
@@ -1504,9 +1564,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         )}
 
         {isAcademia ? (
-          <>
-            <div className="grid gap-4">{programSelect}</div>
-          </>
+          <div className="grid gap-4">{programSelect}</div>
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-3">
@@ -1524,68 +1582,77 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 {materiasSelect}
               </div>
             )}
-            {nivel === "licenciatura" && (
-              <section className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                    Disponibilidad de programas por plantel
-                  </p>
-                  <p className="mt-1 text-sm text-slate-200">
-                    Selecciona un programa académico para conocer su disponibilidad.
-                  </p>
-                </div>
-                <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
-                  {programaAcademicoSelect}
-                  <div
-                    className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
-                      disponibilidadDetalle?.status === "disponible"
-                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                        : disponibilidadDetalle?.status === "no_disponible"
-                          ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                          : "border-slate-700 bg-slate-900/50 text-slate-300"
-                    }`}
-                  >
-                    {!plantelDisponibilidadKey
-                      ? "Selecciona un plantel"
-                      : programasDisponibles.length === 0
-                        ? "Sin disponibilidad cargada"
-                        : !programaAcademico
-                          ? "Selecciona un programa"
-                          : disponibilidadDetalle?.status === "disponible"
-                            ? "Disponible"
-                            : disponibilidadDetalle?.status === "no_disponible"
-                              ? "No disponible"
-                              : "Sin registro"}
-                  </div>
-                </div>
-                {disponibilidadDetalle?.status === "disponible" &&
-                  disponibilidadDetalle.modalidades.length > 0 && (
-                    <div className="mt-3 grid gap-2 text-xs text-slate-200">
-                      {disponibilidadDetalle.modalidades.map((entry) => (
-                        <div
-                          key={entry.modalidad}
-                          className="flex flex-col gap-1 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
-                        >
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                            {entry.label}
-                          </span>
-                          {entry.horarios?.length ? (
-                            <span className="text-slate-200">
-                              Horario: {entry.horarios.join(" / ")}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">
-                              Horario no disponible
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-              </section>
-            )}
           </>
         )}
+
+        <section className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Disponibilidad de programas por plantel
+              </p>
+              <p className="mt-1 text-sm text-slate-200">
+                Selecciona un programa académico para conocer su disponibilidad.
+              </p>
+            </div>
+            {lineaNegocioPrograma && (
+              <span className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+                {lineaNegocioPrograma.label}
+              </span>
+            )}
+          </div>
+          <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
+            <div className="grid gap-3 md:grid-cols-2">
+              {programaAcademicoSelect}
+              {!plantel && plantelDisponibilidadSelect}
+            </div>
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                disponibilidadDetalle?.status === "disponible"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                  : disponibilidadDetalle?.status === "no_disponible"
+                    ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                    : "border-slate-700 bg-slate-900/50 text-slate-300"
+              }`}
+            >
+              {!plantelDisponibilidadKey
+                ? "Selecciona un plantel"
+                : programasDisponibles.length === 0
+                  ? "Sin disponibilidad cargada"
+                  : !programaAcademico
+                    ? "Selecciona un programa"
+                    : disponibilidadDetalle?.status === "disponible"
+                      ? "Disponible"
+                      : disponibilidadDetalle?.status === "no_disponible"
+                        ? "No disponible"
+                        : "Sin registro"}
+            </div>
+          </div>
+          {disponibilidadDetalle?.status === "disponible" &&
+            disponibilidadDetalle.modalidades.length > 0 && (
+              <div className="mt-3 grid gap-2 text-xs text-slate-200">
+                {disponibilidadDetalle.modalidades.map((entry) => (
+                  <div
+                    key={entry.modalidad}
+                    className="flex flex-col gap-1 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {entry.label}
+                    </span>
+                    {entry.horarios?.length ? (
+                      <span className="text-slate-200">
+                        Horario: {entry.horarios.join(" / ")}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Horario no disponible
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+        </section>
 
         {isProgramaExtras && (
           <section
