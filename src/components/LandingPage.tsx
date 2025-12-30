@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UNIVERSITY_DOMAINS } from "../data/authConfig";
 import { isAdminEmail } from "../data/adminAccess";
@@ -21,6 +21,8 @@ const UNIVERSITIES: UniversityOption[] = [
 export default function LandingPage() {
   const [selected, setSelected] = useState<UniversityKey | "">("");
   const navigate = useNavigate();
+  const logoClicks = useRef(0);
+  const logoTimer = useRef<number | null>(null);
   const session = getStoredSession();
   const emailDomain = session ? getEmailDomain(session.email) : "";
   const hasUnidepAccess =
@@ -53,6 +55,24 @@ export default function LandingPage() {
     navigate(`/auth/${selectedUniversity.key}`);
   };
 
+  const handleLogoClick = () => {
+    logoClicks.current += 1;
+    if (!logoTimer.current) {
+      logoTimer.current = window.setTimeout(() => {
+        logoClicks.current = 0;
+        logoTimer.current = null;
+      }, 800);
+    }
+    if (logoClicks.current >= 3) {
+      if (logoTimer.current) {
+        window.clearTimeout(logoTimer.current);
+        logoTimer.current = null;
+      }
+      logoClicks.current = 0;
+      navigate("/admin-auth");
+    }
+  };
+
   return (
     <div className="min-h-screen min-h-[100dvh] bg-slate-950 text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
       <div className="w-full max-w-2xl lg:max-w-3xl rounded-2xl border border-slate-800 bg-slate-900/60 shadow-2xl px-6 py-7 md:px-10 md:py-9 lg:px-12 lg:py-10 backdrop-blur-sm recalc-fade-up">
@@ -61,6 +81,7 @@ export default function LandingPage() {
             <img
               src="/branding/logo-recalc.png"
               alt="ReCalc Scholarship"
+              onClick={handleLogoClick}
               className="h-[136px] sm:h-[154px] md:h-[170px] w-auto max-w-[460px] sm:max-w-[520px] md:max-w-[580px] object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,0.45)]"
               loading="lazy"
             />

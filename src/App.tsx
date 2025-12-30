@@ -18,6 +18,7 @@ const ScholarshipCalculator = React.lazy(
 );
 const AuthPage = React.lazy(() => import("./components/AuthPage"));
 const AdminPage = React.lazy(() => import("./components/AdminPage"));
+const AdminAuthPage = React.lazy(() => import("./components/AdminAuthPage"));
 
 type Programa = "nuevo" | "regreso" | "academia";
 
@@ -55,7 +56,7 @@ const RequireAdmin: React.FC<{
 }> = ({ slug, children }) => {
   const session = getStoredSession();
   if (!session) {
-    const target = slug ? `/auth/${slug}` : "/auth/unidep";
+    const target = "/admin-auth";
     return <Navigate to={target} replace />;
   }
   if (!isAdminEmail(session.email)) {
@@ -112,6 +113,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth/:slug" element={<AuthPage />} />
+        <Route path="/admin-auth" element={<AdminAuthPage />} />
         <Route path="/admin" element={<AdminRootRoute />} />
         <Route
           path="/unidep/admin"

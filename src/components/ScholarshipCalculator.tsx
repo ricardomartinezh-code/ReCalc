@@ -620,6 +620,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       return;
     }
 
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+
     if (adminOverride && Number.isFinite(adminOverride.precioLista)) {
       setPrecioLista(Math.round(adminOverride.precioLista * 100) / 100);
       return;
@@ -641,7 +643,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       }
     }
 
-    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     const oferta =
       plantelKey && COSTOS_META.planteles?.[plantelKey]?.oferta?.[nivel]?.[
         String(plan)
