@@ -145,6 +145,11 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
+  const adjustmentFieldClass =
+    "w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
+  const adjustmentWideClass =
+    "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
+
   const loadDraft = (slugValue: string) => {
     if (typeof window === "undefined") return null;
     try {
@@ -730,14 +735,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             {(config.adjustments ?? []).map((adjustment, index) => (
               <div
                 key={adjustment.id || `${adjustment.titulo}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.4fr_.9fr_.9fr_.9fr_.7fr_.7fr_.8fr_.8fr_auto]"
+                className="flex flex-wrap gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
               >
                 <input
                   value={adjustment.titulo}
                   onChange={(event) =>
                     updateAdjustment(index, { titulo: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                   placeholder="Titulo"
                 />
                 <input
@@ -745,7 +750,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { descripcion: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentWideClass}
                   placeholder="Descripcion"
                 />
                 <select
@@ -753,7 +758,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { programa: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {programaOptionsAll.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -766,7 +771,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { nivel: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {nivelOptionsAll.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -779,7 +784,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { modalidad: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {modalidadOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -792,7 +797,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { plan: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                   placeholder="Plan o *"
                 />
                 <select
@@ -800,7 +805,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateAdjustment(index, { plantel: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   <option value="*">Todos</option>
                   {plantelOptions.map((plantel) => (
@@ -816,13 +821,13 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       aplica: event.target.value as AdminAdjustment["aplica"],
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   <option value="ui">Solo UI</option>
                   <option value="calculo">Solo calculo</option>
                   <option value="ambos">UI + calculo</option>
                 </select>
-                <div className="flex items-center gap-2">
+                <div className={`flex items-center gap-2 ${adjustmentFieldClass}`}>
                   <select
                     value={adjustment.tipo}
                     onChange={(event) =>
@@ -847,7 +852,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                     placeholder="Valor"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                <label className="flex w-full items-center gap-2 text-[11px] text-slate-300 md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)]">
                   <input
                     type="checkbox"
                     className="accent-emerald-500"
@@ -868,7 +873,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       ),
                     }))
                   }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                  className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                 >
                   Quitar
                 </button>

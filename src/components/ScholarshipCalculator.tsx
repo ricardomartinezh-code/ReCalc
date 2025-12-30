@@ -604,7 +604,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     if (!modalidad || isRegreso) return;
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     const rule = resolveDefaultBenefit(adminConfig, modalidad, plantelKey || "");
-    if (!rule) return;
+    if (!rule) {
+      setBeneficioActivo(false);
+      setBeneficioPorcentaje(10);
+      setResultadoMonto(null);
+      setResultadoPorcentaje(null);
+      return;
+    }
     setBeneficioActivo(rule.activo);
     setBeneficioPorcentaje(rule.porcentaje);
     setResultadoMonto(null);
@@ -732,16 +738,31 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     const sinAccesoBeca = promedioNum < 7;
 
     const programaKey = resolveProgramaKey(programa);
-
-    if (requierePlantel && modalidad !== "online" && !tierResolvido) {
-      setError("No se encontró el tier para el plantel seleccionado.");
-      return;
-    }
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    const oferta =
+      plantelKey && COSTOS_META.planteles?.[plantelKey]?.oferta?.[nivel]?.[
+        String(plan)
+      ];
 
     const baseRules = COSTOS_RULES.filter((c) => {
       if (c.programa !== programaKey) return false;
       return c.nivel === nivel && c.modalidad === modalidad && c.plan === plan;
     });
+    const tieneReglaPlantel = Boolean(
+      plantel && baseRules.some((rule) => rule.plantel === plantel)
+    );
+    const tieneOferta = typeof oferta?.neto === "number";
+
+    if (
+      requierePlantel &&
+      modalidad !== "online" &&
+      !tierResolvido &&
+      !tieneReglaPlantel &&
+      !tieneOferta
+    ) {
+      setError("No se encontró el tier para el plantel seleccionado.");
+      return;
+    }
     let candidatos = baseRules;
     if (requierePlantel && plantel) {
       const porPlantel = baseRules.filter((c) => c.plantel === plantel);
@@ -773,12 +794,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     if (isProgramaExtras) {
       porcentajeAplicado = Math.min(porcentajeAplicado, 25);
     }
-
-    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
-    const oferta =
-      plantelKey && COSTOS_META.planteles?.[plantelKey]?.oferta?.[nivel]?.[
-        String(plan)
-      ];
 
     const materiaOverride =
       isRegreso && nivel === "licenciatura" && materiasInscritas
