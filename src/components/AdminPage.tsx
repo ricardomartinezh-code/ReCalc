@@ -22,6 +22,26 @@ import {
 type Modalidad = "presencial" | "online" | "mixta";
 type Nivel = "licenciatura" | "salud" | "maestria" | "preparatoria";
 type Programa = "nuevo" | "regreso" | "academia";
+type AvailabilityDebugEntry = {
+  plantel: string;
+  headerIndex?: number;
+  yearIndex?: number;
+  modalidadIndex?: number;
+  escolarizadoCol?: number;
+  ejecutivoCol?: number;
+  horariosIndex?: number;
+  horariosHeaderCol?: number;
+  scheduleEscolarizadoCol?: number;
+  scheduleEjecutivoCol?: number;
+  entries?: number;
+  warnings?: string[];
+  sample?: Array<{
+    programa?: string;
+    modalidad?: string;
+    activo?: boolean;
+    horario?: string;
+  }>;
+};
 
 const modalidadOptions: Array<{ value: string; label: string }> = [
   { value: "*", label: "Todas" },
@@ -156,6 +176,12 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [isDirty, setIsDirty] = useState(false);
+  const [availabilityDebug, setAvailabilityDebug] = useState<
+    AvailabilityDebugEntry[] | null
+  >(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilityFetchedAt, setAvailabilityFetchedAt] = useState("");
 
   const adjustmentFieldClass =
     "w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
@@ -220,6 +246,32 @@ export default function AdminPage() {
       setError("No fue posible cargar la configuracion del servidor.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const refreshAvailabilityDebug = async () => {
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
+    try {
+      const response = await fetch(
+        "/api/program-availability?debug=1&noCache=1"
+      );
+      if (!response.ok) {
+        throw new Error("No fue posible leer disponibilidad.");
+      }
+      const data = (await response.json().catch(() => ({}))) as {
+        debug?: AvailabilityDebugEntry[];
+      };
+      setAvailabilityDebug(Array.isArray(data.debug) ? data.debug : []);
+      setAvailabilityFetchedAt(new Date().toLocaleString("es-MX"));
+    } catch (err) {
+      setAvailabilityError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible leer disponibilidad."
+      );
+    } finally {
+      setAvailabilityLoading(false);
     }
   };
 
@@ -621,6 +673,121 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               Agregar regla
             </button>
           </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Diagnostico de lectura (Sheets)
+            </h2>
+            <p className="text-xs text-slate-400">
+              Revisa si la lectura detecta encabezados y columnas esperadas.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={refreshAvailabilityDebug}
+              disabled={availabilityLoading}
+              className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                availabilityLoading
+                  ? "cursor-not-allowed border-slate-800 text-slate-500"
+                  : "border-slate-700 text-slate-300 hover:border-slate-400 hover:text-slate-100"
+              }`}
+            >
+              {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
+            </button>
+            {availabilityFetchedAt ? (
+              <span className="text-xs text-slate-400">
+                Ultima lectura: {availabilityFetchedAt}
+              </span>
+            ) : null}
+          </div>
+          {availabilityError ? (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              {availabilityError}
+            </div>
+          ) : null}
+          {availabilityDebug ? (
+            <div className="space-y-2 text-xs text-slate-200">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-300">
+                Total registros leidos:{" "}
+                {availabilityDebug.reduce(
+                  (total, entry) => total + Number(entry.entries ?? 0),
+                  0
+                )}
+              </div>
+              <div className="space-y-2">
+                {availabilityDebug.map((entry) => (
+                  <div
+                    key={entry.plantel}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-100">
+                        {entry.plantel}
+                      </span>
+                      <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                        {entry.entries ?? 0} registros
+                      </span>
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-400">
+                      encabezado: {entry.headerIndex ?? "-"} | 2026:{" "}
+                      {entry.yearIndex ?? "-"} | modalidad:{" "}
+                      {entry.modalidadIndex ?? "-"} | col escolarizado:{" "}
+                      {entry.escolarizadoCol ?? "-"} | col ejecutivo:{" "}
+                      {entry.ejecutivoCol ?? "-"} | horarios:{" "}
+                      {entry.horariosIndex ?? "-"} | col horarios:{" "}
+                      {entry.horariosHeaderCol ?? "-"} | horario escolarizado:{" "}
+                      {entry.scheduleEscolarizadoCol ?? "-"} | horario ejecutivo:{" "}
+                      {entry.scheduleEjecutivoCol ?? "-"}
+                    </div>
+                    {entry.warnings?.length ? (
+                      <div className="mt-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
+                        {entry.warnings.join(" ")}
+                      </div>
+                    ) : null}
+                    {entry.sample?.length ? (
+                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-2 text-[11px] text-slate-300">
+                        <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-400">
+                          Preview
+                        </div>
+                        <div className="space-y-1">
+                          {entry.sample.map((item, idx) => (
+                            <div
+                              key={`${entry.plantel}-${idx}`}
+                              className="flex flex-wrap items-center gap-2"
+                            >
+                              <span className="font-semibold text-slate-100">
+                                {item.programa}
+                              </span>
+                              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                                {item.modalidad}
+                              </span>
+                              <span
+                                className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                                  item.activo
+                                    ? "border-emerald-400/50 text-emerald-200"
+                                    : "border-rose-400/50 text-rose-200"
+                                }`}
+                              >
+                                {item.activo ? "Disponible" : "No disponible"}
+                              </span>
+                              {item.horario ? (
+                                <span className="text-[10px] text-slate-400">
+                                  {item.horario}
+                                </span>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">

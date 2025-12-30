@@ -16,20 +16,31 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
-const parseAvailability = (raw: string) => {
-  const normalized = normalizeText(raw);
-  if (!normalized) return true;
-  if (["si", "sí", "true", "1", "disponible", "activo"].includes(normalized)) {
+const parseAvailability = (raw: unknown) => {
+  if (raw === true) return true;
+  if (raw === false) return false;
+  const rawText = String(raw ?? "").trim();
+  const normalized = normalizeText(rawText);
+  if (!normalized) return false;
+  for (const char of rawText) {
+    const code = char.codePointAt(0);
+    if (code === 0x2713 || code === 0x2714 || code === 0x2705) {
+      return true;
+    }
+  }
+  if ("si" === normalized || "true" === normalized || "1" === normalized || "disponible" === normalized || "activo" === normalized || "verdadero" === normalized) {
     return true;
   }
-  if (["✓", "✔", "✅"].includes(raw?.trim())) {
-    return true;
-  }
-  if (["no", "false", "0", "no disponible", "inactivo"].includes(normalized)) {
+  if ("no" === normalized || "false" === normalized || "0" === normalized || "no disponible" === normalized || "inactivo" === normalized || "falso" === normalized) {
     return false;
   }
-  return true;
+  return false;
 };
+const isTruthyCell = (value: string, needles: string[]) => {
+  const normalized = normalizeText(value);
+  return needles.some((needle) => normalized.includes(needle));
+};
+
 
 
 const getAccessToken = async () => {
@@ -63,9 +74,9 @@ const fetchSheetNames = async (token: string) => {
 };
 
 const fetchSheetValues = async (token: string, sheetName: string) => {
-  const range = encodeURIComponent(`${sheetName}!A1:Z`);
+  const range = encodeURIComponent(`${sheetName}!A1:AZ`);
   const response = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}?valueRenderOption=UNFORMATTED_VALUE`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -77,72 +88,160 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
   return data.values ?? [];
 };
 
-const buildAvailability = (rows: string[][], plantelName: string) => {
-  if (!rows.length) return [];
-  const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? "")));
-  const headerIndex = normalizedRows.findIndex((row) =>
-    row.some((cell) => normalizeText(cell) === "c1 2026")
+const buildAvailability = (
+  rows: unknown[][],
+  plantelName: string
+): { entries: any[]; debug: any } => {
+  if (!rows.length) {
+    return {
+      entries: [],
+      debug: { plantel: plantelName, warnings: ["Hoja sin datos."] },
+    };
+  }
+  const normalizedRows = rows.map((row) =>
+    row.map((cell) => String(cell ?? ""))
   );
-  if (headerIndex < 0) return [];
+  const warnings: string[] = [];
+  const headerIndex = normalizedRows.findIndex((row) => {
+    const hasC1 = row.some((cell) => normalizeText(cell).includes("c1"));
+    const has2026 = row.some((cell) => normalizeText(cell).includes("2026"));
+    return hasC1 && has2026;
+  });
+  if (headerIndex < 0) {
+    return {
+      entries: [],
+      debug: {
+        plantel: plantelName,
+        warnings: ["No se encontro el encabezado C1 2026."],
+      },
+    };
+  }
 
-  const yearIndex = normalizedRows.findIndex(
-    (row, idx) =>
-      idx > headerIndex && row.some((cell) => normalizeText(cell) === "2026")
-  );
-  if (yearIndex < 0) return [];
+  const yearSearchEnd = Math.min(headerIndex + 6, normalizedRows.length - 1);
+  let yearIndex = -1;
+  for (let i = headerIndex; i <= yearSearchEnd; i += 1) {
+    if (normalizedRows[i].some((cell) => normalizeText(cell) === "2026")) {
+      yearIndex = i;
+      break;
+    }
+  }
+  if (yearIndex < 0) {
+    warnings.push("No se encontro la fila de 2026; se asumio la misma fila.");
+    yearIndex = headerIndex;
+  }
 
-  const modalidadIndex = yearIndex + 1;
+  const modalidadSearchEnd = Math.min(yearIndex + 4, normalizedRows.length - 1);
+  let modalidadIndex = -1;
+  for (let i = yearIndex; i <= modalidadSearchEnd; i += 1) {
+    if (
+      normalizedRows[i].some((cell) =>
+        isTruthyCell(cell, ["escolarizado", "ejecutivo"])
+      )
+    ) {
+      modalidadIndex = i;
+      break;
+    }
+  }
+  if (modalidadIndex < 0) {
+    warnings.push("No se encontro la fila de modalidades; se uso la fila siguiente.");
+    modalidadIndex = Math.min(yearIndex + 1, normalizedRows.length - 1);
+  }
+
   const modalidadRow = normalizedRows[modalidadIndex] ?? [];
-  let escolarizadoCol = modalidadRow.findIndex(
-    (cell) => normalizeText(cell) === "escolarizado"
-  );
-  let ejecutivoCol = modalidadRow.findIndex(
-    (cell) => normalizeText(cell) === "ejecutivo"
-  );
+  const escolarizadoCols = modalidadRow
+    .map((cell, idx) => (isTruthyCell(cell, ["escolarizado"]) ? idx : -1))
+    .filter((idx) => idx >= 0);
+  const ejecutivoCols = modalidadRow
+    .map((cell, idx) => (isTruthyCell(cell, ["ejecutivo"]) ? idx : -1))
+    .filter((idx) => idx >= 0);
+  let escolarizadoCol = escolarizadoCols[0] ?? -1;
+  let ejecutivoCol = ejecutivoCols[0] ?? -1;
   if (escolarizadoCol < 0) escolarizadoCol = 2;
   if (ejecutivoCol < 0) ejecutivoCol = 3;
+
+  const headerRow = normalizedRows[headerIndex] ?? [];
+  const horariosHeaderCol = headerRow.findIndex(
+    (cell) => normalizeText(cell) === "horarios"
+  );
+  const scheduleEscolarizadoCol =
+    horariosHeaderCol >= 0
+      ? escolarizadoCols.find((idx) => idx > horariosHeaderCol) ?? -1
+      : -1;
+  const scheduleEjecutivoCol =
+    horariosHeaderCol >= 0
+      ? ejecutivoCols.find((idx) => idx > horariosHeaderCol) ?? -1
+      : -1;
 
   const horariosIndex = normalizedRows.findIndex((row) =>
     row.some((cell) => normalizeText(cell) === "horarios")
   );
-  const scheduleColumns = [7, 8, 9, 10];
 
-  return normalizedRows.slice(modalidadIndex + 1).reduce<any[]>(
-    (acc, row, rowIndex) => {
-      const programa = String(row[1] ?? "").trim();
+  const endIndex =
+    horariosIndex > modalidadIndex ? horariosIndex : normalizedRows.length;
+  const entries = normalizedRows
+    .slice(modalidadIndex + 1, endIndex)
+    .reduce<any[]>((acc, row, rowIndex) => {
+      const programa = String(row[1] ?? row[0] ?? "").trim();
       if (!programa) return acc;
-      const escolarizadoRaw = String(row[escolarizadoCol] ?? "");
-      const ejecutivoRaw = String(row[ejecutivoCol] ?? "");
-      const horariosRaw = scheduleColumns
-        .map((idx) => String(row[idx] ?? "").trim())
-        .filter(Boolean)
-        .join(" / ");
-      const horario = horariosIndex >= 0 ? horariosRaw : "";
-
+      const programaNorm = normalizeText(programa);
+      if (["modular", "longitudinal"].includes(programaNorm)) return acc;
+      if (programaNorm === "programa" || programaNorm === "programas") return acc;
+      const escolarizadoRaw = row[escolarizadoCol];
+      const ejecutivoRaw = row[ejecutivoCol];
       if (escolarizadoCol >= 0) {
+        const horarioEscolarizado =
+          scheduleEscolarizadoCol >= 0
+            ? String(row[scheduleEscolarizadoCol] ?? "").trim()
+            : "";
         acc.push({
           id: `sheet-${plantelName}-${rowIndex}-presencial`,
           plantel: plantelName,
           programa,
           modalidad: "presencial",
-          horario,
+          horario: horarioEscolarizado,
           activo: parseAvailability(escolarizadoRaw),
         });
       }
       if (ejecutivoCol >= 0) {
+        const horarioEjecutivo =
+          scheduleEjecutivoCol >= 0
+            ? String(row[scheduleEjecutivoCol] ?? "").trim()
+            : "";
         acc.push({
           id: `sheet-${plantelName}-${rowIndex}-mixta`,
           plantel: plantelName,
           programa,
           modalidad: "mixta",
-          horario,
+          horario: horarioEjecutivo,
           activo: parseAvailability(ejecutivoRaw),
         });
       }
       return acc;
+    }, []);
+
+  return {
+    entries,
+    debug: {
+      plantel: plantelName,
+      headerIndex,
+      yearIndex,
+      modalidadIndex,
+      escolarizadoCol,
+      ejecutivoCol,
+      horariosIndex,
+      horariosHeaderCol,
+      scheduleEscolarizadoCol,
+      scheduleEjecutivoCol,
+      entries: entries.length,
+      warnings,
+      sample: entries.slice(0, 5).map((entry) => ({
+        programa: entry.programa,
+        modalidad: entry.modalidad,
+        activo: entry.activo,
+        horario: entry.horario,
+      })),
     },
-    []
-  );
+  };
 };
 
 const fetchAvailability = async () => {
@@ -154,9 +253,13 @@ const fetchAvailability = async () => {
       rows: await fetchSheetValues(token, sheetName),
     }))
   );
-  return allRows.flatMap(({ sheetName, rows }) =>
+  const results = allRows.map(({ sheetName, rows }) =>
     buildAvailability(rows, sheetName)
   );
+  return {
+    availability: results.flatMap((result) => result.entries),
+    debug: results.map((result) => result.debug),
+  };
 };
 
 export default async function handler(req: any, res: any) {
@@ -173,13 +276,16 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    if (cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
+    const url = new URL(req.url ?? "", "http://localhost");
+    const wantsDebug = url.searchParams.get("debug") === "1";
+    const noCache = url.searchParams.get("noCache") === "1";
+    if (!noCache && cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
       sendJson(res, 200, { availability: cache.data });
       return;
     }
-    const availability = await fetchAvailability();
+    const { availability, debug } = await fetchAvailability();
     cache = { timestamp: Date.now(), data: availability };
-    sendJson(res, 200, { availability });
+    sendJson(res, 200, wantsDebug ? { availability, debug } : { availability });
   } catch (err) {
     sendJson(res, 500, { error: "No fue posible leer la disponibilidad." });
   }
