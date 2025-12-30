@@ -68,6 +68,36 @@ const emptyConfig = (): AdminConfig => ({
 
 const buildId = () => `rule-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+const normalizeLocalConfig = (config?: AdminConfig | null): AdminConfig => {
+  const fallback = emptyConfig();
+  if (!config || typeof config !== "object") return fallback;
+  return {
+    ...fallback,
+    ...config,
+    enabled:
+      typeof config.enabled === "boolean" ? config.enabled : fallback.enabled,
+    defaults: {
+      ...fallback.defaults,
+      ...(config.defaults ?? {}),
+      beneficio: {
+        ...fallback.defaults.beneficio,
+        ...(config.defaults?.beneficio ?? {}),
+        rules: Array.isArray(config.defaults?.beneficio?.rules)
+          ? config.defaults.beneficio.rules
+          : [],
+      },
+    },
+    priceOverrides: Array.isArray(config.priceOverrides)
+      ? config.priceOverrides
+      : [],
+    materiaOverrides: Array.isArray(config.materiaOverrides)
+      ? config.materiaOverrides
+      : [],
+    shortcuts: Array.isArray(config.shortcuts) ? config.shortcuts : [],
+    adjustments: Array.isArray(config.adjustments) ? config.adjustments : [],
+  };
+};
+
 export default function AdminPage() {
   const { slug } = useParams();
   const normalizedSlug = String(slug ?? "").trim().toLowerCase();
@@ -120,7 +150,7 @@ export default function AdminPage() {
     try {
       const raw = window.localStorage.getItem(`${ADMIN_DRAFT_PREFIX}${slugValue}`);
       if (!raw) return null;
-      return JSON.parse(raw) as AdminConfig;
+      return normalizeLocalConfig(JSON.parse(raw) as AdminConfig);
     } catch (err) {
       return null;
     }
@@ -576,7 +606,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             </p>
           </div>
           <div className="space-y-3">
-            {config.materiaOverrides.map((override, index) => (
+            {(config.materiaOverrides ?? []).map((override, index) => (
               <div
                 key={`${override.programa}-${override.materias}-${index}`}
                 className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1.2fr_.7fr_.9fr_auto]"
@@ -697,7 +727,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             </p>
           </div>
           <div className="space-y-3">
-            {config.adjustments.map((adjustment, index) => (
+            {(config.adjustments ?? []).map((adjustment, index) => (
               <div
                 key={adjustment.id || `${adjustment.titulo}-${index}`}
                 className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.4fr_.9fr_.9fr_.9fr_.7fr_.7fr_.8fr_.8fr_auto]"
