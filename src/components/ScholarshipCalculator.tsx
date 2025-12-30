@@ -1461,7 +1461,7 @@ const materiasOpciones = useMemo(
       placeholder={
         plantelDisponibilidadKey
           ? "Selecciona programa"
-          : "Selecciona un plantel primero"
+          : "Selecciona un plantel para disponibilidad"
       }
       disabled={!plantelDisponibilidadKey || programasDisponibles.length === 0}
       accent={accent}
@@ -1480,7 +1480,7 @@ const materiasOpciones = useMemo(
         setPlantelDisponibilidadManual(val);
         setProgramaAcademico("");
       }}
-      placeholder="Selecciona plantel"
+      placeholder="Selecciona plantel para disponibilidad"
       disabled={Boolean(plantel)}
       accent={accent}
     />
@@ -1616,7 +1616,7 @@ const materiasOpciones = useMemo(
               }`}
             >
               {!plantelDisponibilidadKey
-                ? "Selecciona un plantel"
+                ? "Selecciona un plantel para disponibilidad"
                 : programasDisponibles.length === 0
                   ? "Sin disponibilidad cargada"
                   : !programaAcademico

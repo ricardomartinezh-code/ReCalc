@@ -44,8 +44,15 @@ const isTruthyCell = (value: string, needles: string[]) => {
 
 
 const getAccessToken = async () => {
-  if (!CREDENTIALS) throw new Error("Missing service account credentials.");
-  const parsed = JSON.parse(CREDENTIALS);
+  if (!CREDENTIALS) {
+    throw new Error("Missing service account credentials.");
+  }
+  let parsed: any;
+  try {
+    parsed = JSON.parse(CREDENTIALS);
+  } catch (err) {
+    throw new Error("Invalid service account JSON.");
+  }
   const auth = new GoogleAuth({
     credentials: parsed,
     scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
@@ -63,7 +70,7 @@ const fetchSheetNames = async (token: string) => {
     }
   );
   if (!response.ok) {
-    throw new Error("Failed to load spreadsheet metadata.");
+    throw new Error(`Failed to load spreadsheet metadata (${response.status}).`);
   }
   const data = (await response.json()) as {
     sheets?: Array<{ properties?: { title?: string } }>;
@@ -82,7 +89,7 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
     }
   );
   if (!response.ok) {
-    throw new Error("Failed to load spreadsheet values.");
+    throw new Error(`Failed to load spreadsheet values (${response.status}).`);
   }
   const data = (await response.json()) as { values?: string[][] };
   return data.values ?? [];
@@ -275,10 +282,10 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  const url = new URL(req.url ?? "", "http://localhost");
+  const wantsDebug = url.searchParams.get("debug") === "1";
+  const noCache = url.searchParams.get("noCache") === "1";
   try {
-    const url = new URL(req.url ?? "", "http://localhost");
-    const wantsDebug = url.searchParams.get("debug") === "1";
-    const noCache = url.searchParams.get("noCache") === "1";
     if (!noCache && cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
       sendJson(res, 200, { availability: cache.data });
       return;
@@ -287,6 +294,14 @@ export default async function handler(req: any, res: any) {
     cache = { timestamp: Date.now(), data: availability };
     sendJson(res, 200, wantsDebug ? { availability, debug } : { availability });
   } catch (err) {
-    sendJson(res, 500, { error: "No fue posible leer la disponibilidad." });
+    const details =
+      err instanceof Error ? err.message : "Error desconocido.";
+    sendJson(
+      res,
+      500,
+      wantsDebug
+        ? { error: "No fue posible leer la disponibilidad.", details }
+        : { error: "No fue posible leer la disponibilidad." }
+    );
   }
 }

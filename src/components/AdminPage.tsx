@@ -256,12 +256,16 @@ export default function AdminPage() {
       const response = await fetch(
         "/api/program-availability?debug=1&noCache=1"
       );
-      if (!response.ok) {
-        throw new Error("No fue posible leer disponibilidad.");
-      }
       const data = (await response.json().catch(() => ({}))) as {
         debug?: AvailabilityDebugEntry[];
+        error?: string;
+        details?: string;
       };
+      if (!response.ok) {
+        throw new Error(
+          data?.details || data?.error || "No fue posible leer disponibilidad."
+        );
+      }
       setAvailabilityDebug(Array.isArray(data.debug) ? data.debug : []);
       setAvailabilityFetchedAt(new Date().toLocaleString("es-MX"));
     } catch (err) {
