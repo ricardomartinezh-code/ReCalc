@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { isAdminEmail } from "../data/adminAccess";
 import { setStoredSession } from "../utils/auth";
 
-const ADMIN_PASSWORD = "xoSro2-zuggap-forwof";
-
 export default function AdminAuthPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -24,13 +22,24 @@ export default function AdminAuthPage() {
       return;
     }
 
-    if (!isAdminEmail(trimmedEmail) || trimmedPassword !== ADMIN_PASSWORD) {
-      setError("Credenciales invalidas.");
-      return;
-    }
-
     setLoading(true);
     try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        setError(data?.error ?? "Credenciales invalidas.");
+        return;
+      }
+      if (!isAdminEmail(trimmedEmail)) {
+        setError("Acceso no autorizado.");
+        return;
+      }
       setStoredSession({ email: trimmedEmail, slug: "unidep" });
       navigate("/admin", { replace: true });
     } finally {
