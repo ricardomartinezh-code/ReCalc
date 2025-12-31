@@ -1330,9 +1330,14 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return Array.from(unique).sort((a, b) => a.localeCompare(b, "es"));
   }, [adminConfig, availabilityMerged, nivel, modalidad, plantel]);
 
+  const plantelDisponibilidadKey =
+    modalidad === "online"
+      ? "ONLINE"
+      : plantel || plantelDisponibilidadManual;
+
   const disponibilidadDetalle = useMemo(() => {
     if (nivel !== "licenciatura") return null;
-    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    const plantelKey = plantelDisponibilidadKey;
     if (!plantelKey || !programaAcademico) return null;
     const normalized = programaAcademico.trim().toLowerCase();
     const entries = resolveProgramAvailability(
@@ -1376,15 +1381,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     adminConfig,
     availabilityMerged,
     nivel,
-    modalidad,
-    plantel,
+    plantelDisponibilidadKey,
     programaAcademico,
   ]);
-
-  const plantelDisponibilidadKey =
-    modalidad === "online"
-      ? "ONLINE"
-      : plantel || plantelDisponibilidadManual;
 
   const lineaNegocioPrograma = useMemo(() => {
     if (!programaAcademico) return null;
