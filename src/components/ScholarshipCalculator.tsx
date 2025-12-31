@@ -1519,30 +1519,35 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         </div>
       ) : (
         <>
-          <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
+          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
             <div className="grid gap-3 md:grid-cols-2">
               {programaAcademicoSelect}
             </div>
-            <div
-              className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
-                disponibilidadDetalle?.status === "disponible"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                  : disponibilidadDetalle?.status === "no_disponible"
-                    ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                    : "border-slate-700 bg-slate-900/50 text-slate-300"
-              }`}
-            >
-              {requierePlantel && !plantel
-                ? "Selecciona plantel en el flujo principal"
-                : programasDisponibles.length === 0
-                  ? "Sin disponibilidad cargada"
-                  : !programaAcademico
-                    ? "Selecciona un programa"
-                    : disponibilidadDetalle?.status === "disponible"
-                      ? disponibilidadEtiqueta ?? "Disponible"
-                      : disponibilidadDetalle?.status === "no_disponible"
-                        ? "No disponible"
-                        : "Sin registro"}
+            <div className="space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Modalidad ofertada
+              </span>
+              <div
+                className={`rounded-lg border px-4 py-2 text-xs font-semibold uppercase tracking-wide ${
+                  disponibilidadDetalle?.status === "disponible"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                    : disponibilidadDetalle?.status === "no_disponible"
+                      ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                      : "border-slate-700 bg-slate-900/50 text-slate-300"
+                }`}
+              >
+                {requierePlantel && !plantel
+                  ? "Selecciona plantel en el flujo principal"
+                  : programasDisponibles.length === 0
+                    ? "Sin disponibilidad cargada"
+                    : !programaAcademico
+                      ? "Selecciona un programa"
+                      : disponibilidadDetalle?.status === "disponible"
+                        ? disponibilidadEtiqueta ?? "Disponible"
+                        : disponibilidadDetalle?.status === "no_disponible"
+                          ? "No disponible"
+                          : "Sin registro"}
+              </div>
             </div>
           </div>
           {disponibilidadDetalle?.status === "disponible" &&
