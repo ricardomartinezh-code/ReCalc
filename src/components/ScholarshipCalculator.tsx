@@ -778,12 +778,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [university]);
 
   useEffect(() => {
-    if (plantel) {
-      setPlantelDisponibilidadManual("");
-    }
-  }, [plantel]);
-
-  useEffect(() => {
     let active = true;
     const loadAvailability = async () => {
       try {
@@ -1479,6 +1473,107 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     />
   );
 
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(
+    !isAcademia
+  );
+
+  useEffect(() => {
+    setAvailabilityEnabled(!isAcademia);
+  }, [isAcademia]);
+
+  const availabilitySection = (
+    <section className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+            Disponibilidad de programas por plantel
+          </p>
+          <p className="mt-1 text-sm text-slate-200">
+            Selecciona un programa académico para conocer su disponibilidad.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {isAcademia && (
+            <button
+              type="button"
+              onClick={() => setAvailabilityEnabled((prev) => !prev)}
+              className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
+                availabilityEnabled
+                  ? "border-emerald-400/50 text-emerald-200"
+                  : "border-slate-700 text-slate-400"
+              }`}
+            >
+              {availabilityEnabled ? "Activo" : "Inactivo"}
+            </button>
+          )}
+          {lineaNegocioPrograma && (
+            <span className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
+              {lineaNegocioPrograma.label}
+            </span>
+          )}
+        </div>
+      </div>
+      {isAcademia && !availabilityEnabled ? (
+        <div className="mt-3 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+          Activa este panel para consultar disponibilidad.
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
+            <div className="grid gap-3 md:grid-cols-2">
+              {programaAcademicoSelect}
+            </div>
+            <div
+              className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
+                disponibilidadDetalle?.status === "disponible"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                  : disponibilidadDetalle?.status === "no_disponible"
+                    ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                    : "border-slate-700 bg-slate-900/50 text-slate-300"
+              }`}
+            >
+              {requierePlantel && !plantel
+                ? "Selecciona plantel en el flujo principal"
+                : programasDisponibles.length === 0
+                  ? "Sin disponibilidad cargada"
+                  : !programaAcademico
+                    ? "Selecciona un programa"
+                    : disponibilidadDetalle?.status === "disponible"
+                      ? disponibilidadEtiqueta ?? "Disponible"
+                      : disponibilidadDetalle?.status === "no_disponible"
+                        ? "No disponible"
+                        : "Sin registro"}
+            </div>
+          </div>
+          {disponibilidadDetalle?.status === "disponible" &&
+            disponibilidadDetalle.modalidades.length > 0 && (
+              <div className="mt-3 grid gap-2 text-xs text-slate-200">
+                {disponibilidadDetalle.modalidades.map((entry) => (
+                  <div
+                    key={entry.modalidad}
+                    className="flex flex-col gap-1 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
+                  >
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {entry.label}
+                    </span>
+                    {entry.horarios?.length ? (
+                      <span className="text-slate-200">
+                        Horario: {entry.horarios.join(" / ")}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">
+                        Horario no disponible
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+        </>
+      )}
+    </section>
+  );
+
   return (
     <div
       className={`min-h-screen min-h-[100dvh] text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
@@ -1578,73 +1673,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
           </>
         )}
 
-        <section className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                Disponibilidad de programas por plantel
-              </p>
-              <p className="mt-1 text-sm text-slate-200">
-                Selecciona un programa académico para conocer su disponibilidad.
-              </p>
-            </div>
-            {lineaNegocioPrograma && (
-              <span className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">
-                {lineaNegocioPrograma.label}
-              </span>
-            )}
-          </div>
-          <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
-              <div className="grid gap-3 md:grid-cols-2">
-                {programaAcademicoSelect}
-              </div>
-            <div
-              className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
-                disponibilidadDetalle?.status === "disponible"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                  : disponibilidadDetalle?.status === "no_disponible"
-                    ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                    : "border-slate-700 bg-slate-900/50 text-slate-300"
-              }`}
-            >
-              {requierePlantel && !plantel
-                ? "Selecciona un plantel en el flujo principal"
-                : programasDisponibles.length === 0
-                  ? "Sin disponibilidad cargada"
-                  : !programaAcademico
-                    ? "Selecciona un programa"
-                    : disponibilidadDetalle?.status === "disponible"
-                      ? disponibilidadEtiqueta ?? "Disponible"
-                      : disponibilidadDetalle?.status === "no_disponible"
-                        ? "No disponible"
-                        : "Sin registro"}
-            </div>
-          </div>
-          {disponibilidadDetalle?.status === "disponible" &&
-            disponibilidadDetalle.modalidades.length > 0 && (
-              <div className="mt-3 grid gap-2 text-xs text-slate-200">
-                {disponibilidadDetalle.modalidades.map((entry) => (
-                  <div
-                    key={entry.modalidad}
-                    className="flex flex-col gap-1 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
-                  >
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      {entry.label}
-                    </span>
-                    {entry.horarios?.length ? (
-                      <span className="text-slate-200">
-                        Horario: {entry.horarios.join(" / ")}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">
-                        Horario no disponible
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-        </section>
+        {!isAcademia && availabilitySection}
 
         {isProgramaExtras && (
           <section
@@ -1924,6 +1953,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             )}
           </section>
         )}
+
+        {isAcademia && availabilitySection}
 
         {isAcademia && (
           <section className="rounded-2xl border border-amber-800/40 bg-amber-950/10 p-3 md:p-4">
