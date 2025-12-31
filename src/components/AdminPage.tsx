@@ -459,6 +459,12 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
     return byPlantel;
   }, [availabilityMerged]);
 
+  const availabilityPlantels = useMemo(() => {
+    return Array.from(availabilityByPlantel.keys()).sort((a, b) =>
+      a.localeCompare(b, "es")
+    );
+  }, [availabilityByPlantel]);
+
   const availabilityDebugByPlantel = useMemo(() => {
     const map = new Map<string, AvailabilityDebugEntry>();
     (availabilityDebug ?? []).forEach((entry) => {
