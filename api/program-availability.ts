@@ -128,7 +128,7 @@ const buildOnlineAvailability = (
         }) ?? "";
       const programa = String(programCell).trim();
       if (!programa) continue;
-      const activo = resolveAvailabilityFromRow(row);
+      const activo = true;
       entries.push({
         id: `sheet-${plantelName}-${section.label}-${i}-online`,
         plantel: plantelName,
