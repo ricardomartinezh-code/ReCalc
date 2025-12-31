@@ -35,6 +35,7 @@ export type AdminProgramAvailability = {
   programa: string;
   modalidad: string;
   horario: string;
+  planUrl?: string;
   activo: boolean;
 };
 
@@ -132,6 +133,7 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
           programa: String(entry.programa ?? ""),
           modalidad: String(entry.modalidad ?? "presencial"),
           horario: String(entry.horario ?? ""),
+          planUrl: String(entry.planUrl ?? ""),
           activo: typeof entry.activo === "boolean" ? entry.activo : true,
         }))
       : [],

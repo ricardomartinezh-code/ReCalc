@@ -57,6 +57,7 @@ function normalizeConfig(config: any) {
           programa: String(entry?.programa ?? ""),
           modalidad: String(entry?.modalidad ?? "presencial"),
           horario: String(entry?.horario ?? ""),
+          planUrl: String(entry?.planUrl ?? ""),
           activo: typeof entry?.activo === "boolean" ? entry.activo : true,
         }))
       : [],

@@ -74,7 +74,8 @@ const resolveAvailabilityFromRow = (row: string[]) => {
 
 const buildOnlineAvailability = (
   rows: unknown[][],
-  plantelName: string
+  plantelName: string,
+  links: Map<number, string>
 ): { entries: any[]; debug: any } => {
   if (!rows.length) {
     return {
@@ -129,12 +130,14 @@ const buildOnlineAvailability = (
       const programa = String(programCell).trim();
       if (!programa) continue;
       const activo = true;
+      const planUrl = links.get(i) ?? "";
       entries.push({
         id: `sheet-${plantelName}-${section.label}-${i}-online`,
         plantel: plantelName,
         programa,
         modalidad: "online",
         horario: "",
+        planUrl,
         activo,
       });
     }
@@ -159,6 +162,50 @@ const buildOnlineAvailability = (
 };
 
 
+
+
+const parseHyperlinkFormula = (formula: string) => {
+  const match = formula.match(/HYPERLINK\("([^"]+)"[;,]/i);
+  return match ? match[1] : "";
+};
+
+const extractCellLink = (cell: any) => {
+  if (!cell || typeof cell !== "object") return "";
+  if (typeof cell.hyperlink === "string" && cell.hyperlink) {
+    return cell.hyperlink;
+  }
+  const runs = Array.isArray(cell.textFormatRuns) ? cell.textFormatRuns : [];
+  for (const run of runs) {
+    const uri = run?.format?.link?.uri;
+    if (typeof uri === "string" && uri) return uri;
+  }
+  const formula = cell.userEnteredValue?.formulaValue;
+  if (typeof formula === "string" && formula) {
+    const link = parseHyperlinkFormula(formula);
+    if (link) return link;
+  }
+  return "";
+};
+
+const fetchSheetLinks = async (token: string, sheetName: string) => {
+  const range = encodeURIComponent(`${sheetName}!B:B`);
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?ranges=${range}&includeGridData=true&fields=sheets.data.rowData.values(formattedValue,hyperlink,textFormatRuns,userEnteredValue)`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load spreadsheet links (${response.status}).`);
+  }
+  const data = (await response.json()) as any;
+  const rowData = data?.sheets?.[0]?.data?.[0]?.rowData ?? [];
+  const linkMap = new Map<number, string>();
+  rowData.forEach((row: any, index: number) => {
+    const cell = row?.values?.[0];
+    const link = extractCellLink(cell);
+    if (link) linkMap.set(index, link);
+  });
+  return linkMap;
+};
 
 const getAccessToken = async () => {
   if (OAUTH_REFRESH_TOKEN) {
@@ -228,7 +275,8 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
 
 const buildAvailability = (
   rows: unknown[][],
-  plantelName: string
+  plantelName: string,
+  links: Map<number, string>
 ): { entries: any[]; debug: any } => {
   if (isIgnoredSheet(plantelName)) {
     return {
@@ -237,7 +285,7 @@ const buildAvailability = (
     };
   }
   if (normalizeText(plantelName).includes("online")) {
-    return buildOnlineAvailability(rows, plantelName);
+    return buildOnlineAvailability(rows, plantelName, links);
   }
   if (!rows.length) {
     return {
@@ -339,6 +387,8 @@ const buildAvailability = (
       if (programaNorm === "programa" || programaNorm === "programas") return acc;
       const escolarizadoRaw = row[escolarizadoCol];
       const ejecutivoRaw = row[ejecutivoCol];
+      const realRowIndex = modalidadIndex + 1 + rowIndex;
+      const planUrl = links.get(realRowIndex) ?? "";
       if (escolarizadoCol >= 0) {
         const horarioEscolarizado =
           scheduleEscolarizadoFallback >= 0
@@ -350,6 +400,7 @@ const buildAvailability = (
           programa,
           modalidad: "presencial",
           horario: horarioEscolarizado,
+          planUrl,
           activo: parseAvailability(escolarizadoRaw),
         });
       }
@@ -364,6 +415,7 @@ const buildAvailability = (
           programa,
           modalidad: "mixta",
           horario: horarioEjecutivo,
+          planUrl,
           activo: parseAvailability(ejecutivoRaw),
         });
       }
@@ -401,13 +453,16 @@ const fetchAvailability = async () => {
   const token = await getAccessToken();
   const sheetNames = await fetchSheetNames(token);
   const allRows = await Promise.all(
-    sheetNames.map(async (sheetName) => ({
-      sheetName,
-      rows: await fetchSheetValues(token, sheetName),
-    }))
+    sheetNames.map(async (sheetName) => {
+      const [rows, links] = await Promise.all([
+        fetchSheetValues(token, sheetName),
+        fetchSheetLinks(token, sheetName),
+      ]);
+      return { sheetName, rows, links };
+    })
   );
-  const results = allRows.map(({ sheetName, rows }) =>
-    buildAvailability(rows, sheetName)
+  const results = allRows.map(({ sheetName, rows, links }) =>
+    buildAvailability(rows, sheetName, links)
   );
   return {
     availability: results.flatMap((result) => result.entries),

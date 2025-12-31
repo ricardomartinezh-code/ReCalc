@@ -415,6 +415,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
           programa: entry.programa ?? "",
           modalidad: entry.modalidad ?? "presencial",
           horario: entry.horario ?? "",
+          planUrl: entry.planUrl ?? "",
           activo: typeof entry.activo === "boolean" ? entry.activo : true,
           ...patch,
         });
@@ -436,7 +437,12 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       const key = buildAvailabilityKey(entry);
       if (!key) return;
       const existing = map.get(key);
-      map.set(key, { ...entry, source: existing ? "override" : "admin" });
+      map.set(key, {
+        ...existing,
+        ...entry,
+        planUrl: entry.planUrl?.trim() ? entry.planUrl : existing?.planUrl ?? "",
+        source: existing ? "override" : "admin",
+      });
     });
     return Array.from(map.values());
   }, [availabilityEntries, config.programAvailability]);

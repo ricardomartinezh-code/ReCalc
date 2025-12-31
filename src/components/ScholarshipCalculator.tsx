@@ -1421,6 +1421,23 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return "Disponible";
   }, [disponibilidadDetalle]);
 
+  const planUrl = useMemo(() => {
+    if (!plantelDisponibilidadKey || !programaAcademico) return "";
+    const normalized = programaAcademico.trim().toLowerCase();
+    const entries = resolveProgramAvailability(
+      adminConfig,
+      { plantel: plantelDisponibilidadKey },
+      availabilityMerged
+    ).filter((entry) => entry.programa?.trim().toLowerCase() === normalized);
+    const match = entries.find((entry) => entry.planUrl?.trim());
+    return match?.planUrl ?? "";
+  }, [
+    adminConfig,
+    availabilityMerged,
+    plantelDisponibilidadKey,
+    programaAcademico,
+  ]);
+
   const materiasOpciones = useMemo(
     () => [
       "1 materia",
@@ -1574,6 +1591,18 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 ))}
               </div>
             )}
+          {planUrl ? (
+            <div className="mt-3">
+              <a
+                href={planUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-200 transition hover:border-emerald-400/70 hover:text-emerald-200"
+              >
+                Descargar plan de estudios
+              </a>
+            </div>
+          ) : null}
         </>
       )}
     </section>
