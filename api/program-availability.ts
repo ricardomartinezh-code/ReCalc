@@ -318,6 +318,10 @@ const buildAvailability = (
     horariosHeaderCol >= 0
       ? ejecutivoCols.find((idx) => idx > horariosHeaderCol) ?? -1
       : -1;
+  const scheduleEscolarizadoFallback =
+    scheduleEscolarizadoCol >= 0 ? scheduleEscolarizadoCol : 7;
+  const scheduleEjecutivoFallback =
+    scheduleEjecutivoCol >= 0 ? scheduleEjecutivoCol : 8;
 
   const horariosIndex = normalizedRows.findIndex((row) =>
     row.some((cell) => normalizeText(cell) === "horarios")
@@ -337,8 +341,8 @@ const buildAvailability = (
       const ejecutivoRaw = row[ejecutivoCol];
       if (escolarizadoCol >= 0) {
         const horarioEscolarizado =
-          scheduleEscolarizadoCol >= 0
-            ? String(row[scheduleEscolarizadoCol] ?? "").trim()
+          scheduleEscolarizadoFallback >= 0
+            ? String(row[scheduleEscolarizadoFallback] ?? "").trim()
             : "";
         acc.push({
           id: `sheet-${plantelName}-${rowIndex}-presencial`,
@@ -351,8 +355,8 @@ const buildAvailability = (
       }
       if (ejecutivoCol >= 0) {
         const horarioEjecutivo =
-          scheduleEjecutivoCol >= 0
-            ? String(row[scheduleEjecutivoCol] ?? "").trim()
+          scheduleEjecutivoFallback >= 0
+            ? String(row[scheduleEjecutivoFallback] ?? "").trim()
             : "";
         acc.push({
           id: `sheet-${plantelName}-${rowIndex}-mixta`,
@@ -379,6 +383,8 @@ const buildAvailability = (
       horariosHeaderCol,
       scheduleEscolarizadoCol,
       scheduleEjecutivoCol,
+      scheduleEscolarizadoFallback,
+      scheduleEjecutivoFallback,
       entries: entries.length,
       warnings,
       sample: entries.slice(0, 5).map((entry) => ({

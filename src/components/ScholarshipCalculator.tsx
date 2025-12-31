@@ -491,8 +491,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const [materiasInscritas, setMateriasInscritas] = useState<number | "">("");
   const [programaAcademico, setProgramaAcademico] = useState<string>("");
   const [promedio, setPromedio] = useState<string>("");
-  const [plantelDisponibilidadManual, setPlantelDisponibilidadManual] =
-    useState<string>("");
 
   const [resultadoMonto, setResultadoMonto] = useState<number | null>(null);
   const [resultadoPorcentaje, setResultadoPorcentaje] = useState<number | null>(
@@ -1315,9 +1313,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
 
   const plantelDisponibilidadKey =
-    modalidad === "online"
-      ? "ONLINE"
-      : plantel || plantelDisponibilidadManual;
+    modalidad === "online" ? "ONLINE" : plantel;
 
   const programasDisponibles = useMemo(() => {
     if (nivel !== "licenciatura") return [];
@@ -1418,6 +1414,19 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return resolveLineaNegocio(programaAcademico);
   }, [programaAcademico]);
 
+  const disponibilidadEtiqueta = useMemo(() => {
+    if (disponibilidadDetalle?.status !== "disponible") return null;
+    const modalidades = disponibilidadDetalle.modalidades ?? [];
+    const keys = new Set(modalidades.map((entry) => entry.modalidad));
+    const hasPresencial = keys.has("presencial");
+    const hasMixta = keys.has("mixta");
+    if (hasPresencial && hasMixta) return "Ambas";
+    if (hasPresencial) return "Presencial";
+    if (hasMixta) return "Ejecutivo";
+    if (keys.has("online")) return "Online";
+    return "Disponible";
+  }, [disponibilidadDetalle]);
+
   const materiasOpciones = useMemo(
     () => [
       "1 materia",
@@ -1459,11 +1468,13 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       value={programaAcademico}
       onChange={(val) => setProgramaAcademico(val)}
       placeholder={
-        plantelDisponibilidadKey
-          ? "Selecciona programa"
-          : "Selecciona un plantel para disponibilidad"
+        requierePlantel && !plantel
+          ? "Selecciona plantel en el flujo principal"
+          : "Selecciona programa"
       }
-      disabled={!plantelDisponibilidadKey || programasDisponibles.length === 0}
+      disabled={
+        (requierePlantel && !plantel) || programasDisponibles.length === 0
+      }
       accent={accent}
     />
   );
@@ -1596,14 +1607,14 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                     : "border-slate-700 bg-slate-900/50 text-slate-300"
               }`}
             >
-              {!plantelDisponibilidadKey
-                ? "Selecciona un plantel para disponibilidad"
+              {requierePlantel && !plantel
+                ? "Selecciona un plantel en el flujo principal"
                 : programasDisponibles.length === 0
                   ? "Sin disponibilidad cargada"
                   : !programaAcademico
                     ? "Selecciona un programa"
                     : disponibilidadDetalle?.status === "disponible"
-                      ? "Disponible"
+                      ? disponibilidadEtiqueta ?? "Disponible"
                       : disponibilidadDetalle?.status === "no_disponible"
                         ? "No disponible"
                         : "Sin registro"}
