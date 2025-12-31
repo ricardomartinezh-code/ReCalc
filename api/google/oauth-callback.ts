@@ -1,9 +1,9 @@
 import { OAuth2Client } from "google-auth-library";
 import { setCors } from "../../server/auth/response.js";
 
-const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
-const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
-const REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL ?? "";
+const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() ?? "";
+const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() ?? "";
+const REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL?.trim() ?? "";
 
 const escapeHtml = (value: string) =>
   value

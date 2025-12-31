@@ -5,10 +5,12 @@ const SHEET_ID =
   process.env.GOOGLE_SHEET_AVAILABILITY_ID ??
   "1LffTC1go3FFGPcSIEuhK0grDKH2WOEmW79jz_8JrAlo";
 const CREDENTIALS = process.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON ?? "";
-const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
-const OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
-const OAUTH_REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL ?? "";
-const OAUTH_REFRESH_TOKEN = process.env.GOOGLE_SHEETS_OAUTH_REFRESH_TOKEN ?? "";
+const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() ?? "";
+const OAUTH_CLIENT_SECRET =
+  process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() ?? "";
+const OAUTH_REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL?.trim() ?? "";
+const OAUTH_REFRESH_TOKEN =
+  process.env.GOOGLE_SHEETS_OAUTH_REFRESH_TOKEN?.trim() ?? "";
 const CACHE_TTL_MS = 60_000;
 
 let cache: { timestamp: number; data: any[] } | null = null;
