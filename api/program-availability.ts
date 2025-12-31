@@ -11,7 +11,7 @@ const OAUTH_CLIENT_SECRET =
 const OAUTH_REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL?.trim() ?? "";
 const OAUTH_REFRESH_TOKEN =
   process.env.GOOGLE_SHEETS_OAUTH_REFRESH_TOKEN?.trim() ?? "";
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 300_000;
 
 let cache: { timestamp: number; data: any[] } | null = null;
 
@@ -497,6 +497,20 @@ export default async function handler(req: any, res: any) {
   } catch (err) {
     const details =
       err instanceof Error ? err.message : "Error desconocido.";
+    if (cache && details.includes("(429)")) {
+      sendJson(
+        res,
+        200,
+        wantsDebug
+          ? {
+              availability: cache.data,
+              warning: "Cuota limitada; se uso cache reciente.",
+              details,
+            }
+          : { availability: cache.data }
+      );
+      return;
+    }
     sendJson(
       res,
       500,

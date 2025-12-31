@@ -262,6 +262,7 @@ export default function AdminPage() {
       const data = (await response.json().catch(() => ({}))) as {
         availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
+        warning?: string;
         error?: string;
         details?: string;
       };
@@ -274,6 +275,9 @@ export default function AdminPage() {
         Array.isArray(data.availability) ? data.availability : []
       );
       setAvailabilityDebug(Array.isArray(data.debug) ? data.debug : []);
+      if (data?.warning) {
+        setAvailabilityError(data.warning);
+      }
       setAvailabilityFetchedAt(new Date().toLocaleString("es-MX"));
     } catch (err) {
       setAvailabilityError(
