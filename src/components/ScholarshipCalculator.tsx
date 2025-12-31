@@ -1468,24 +1468,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     />
   );
 
-  const plantelDisponibilidadSelect = (
-    <SearchableSelect
-      id="plantel-disponibilidad"
-      openId={openSelectId}
-      setOpenId={setOpenSelectId}
-      label="Plantel para disponibilidad"
-      options={plantelesDisponibles}
-      value={plantelDisponibilidadManual}
-      onChange={(val) => {
-        setPlantelDisponibilidadManual(val);
-        setProgramaAcademico("");
-      }}
-      placeholder="Selecciona plantel para disponibilidad"
-      disabled={Boolean(plantel)}
-      accent={accent}
-    />
-  );
-
   return (
     <div
       className={`min-h-screen min-h-[100dvh] text-slate-50 flex items-center justify-center p-3 sm:p-4 md:p-6 [@media(max-height:700px)]:items-start [@media(max-height:700px)]:p-2 ${
@@ -1602,10 +1584,9 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
             )}
           </div>
           <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] items-end">
-            <div className="grid gap-3 md:grid-cols-2">
-              {programaAcademicoSelect}
-              {!plantel && plantelDisponibilidadSelect}
-            </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {programaAcademicoSelect}
+              </div>
             <div
               className={`rounded-xl border px-4 py-3 text-xs font-semibold uppercase tracking-wide ${
                 disponibilidadDetalle?.status === "disponible"
