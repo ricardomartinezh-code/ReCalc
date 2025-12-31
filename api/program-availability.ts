@@ -489,13 +489,16 @@ const getAvailabilityCache = async (slug: string) => {
 
 const saveAvailabilityCache = async (slug: string, payload: any) => {
   const sql = await getSql();
-  await sql`
+  const result = await sql`
     INSERT INTO availability_cache (slug, payload, updated_at)
     VALUES (${slug}, ${payload}, NOW())
     ON CONFLICT (slug)
     DO UPDATE SET payload = EXCLUDED.payload,
-                  updated_at = EXCLUDED.updated_at;
+                  updated_at = EXCLUDED.updated_at
+    RETURNING updated_at;
   `;
+  const rows = Array.isArray(result) ? result : (result as any).rows ?? [];
+  return rows[0]?.updated_at ? new Date(rows[0].updated_at) : new Date();
 };
 
 export default async function handler(req: any, res: any) {
@@ -531,7 +534,10 @@ export default async function handler(req: any, res: any) {
         200,
         wantsDebug
           ? { availability: payload.availability ?? [], debug: payload.debug }
-          : { availability: payload.availability ?? [] }
+          : {
+              availability: payload.availability ?? [],
+              updatedAt: cached.updatedAt?.toISOString() ?? null,
+            }
       );
       return;
     }
@@ -539,8 +545,14 @@ export default async function handler(req: any, res: any) {
     const { availability, debug } = await fetchAvailability();
     const payload = { availability, debug };
     cache = { timestamp: Date.now(), data: availability };
-    await saveAvailabilityCache(slug, payload);
-    sendJson(res, 200, wantsDebug ? payload : { availability });
+    const updatedAt = await saveAvailabilityCache(slug, payload);
+    sendJson(
+      res,
+      200,
+      wantsDebug
+        ? { availability, debug, updatedAt: updatedAt.toISOString() }
+        : { availability, updatedAt: updatedAt.toISOString() }
+    );
   } catch (err) {
     const details =
       err instanceof Error ? err.message : "Error desconocido.";
@@ -561,7 +573,10 @@ export default async function handler(req: any, res: any) {
               warning: "Cuota limitada; se uso cache reciente.",
               details,
             }
-          : { availability: payload.availability ?? [] }
+          : {
+              availability: payload.availability ?? [],
+              updatedAt: cached.updatedAt?.toISOString() ?? null,
+            }
       );
       return;
     }

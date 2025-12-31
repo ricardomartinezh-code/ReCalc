@@ -182,6 +182,7 @@ export default function AdminPage() {
   const [availabilityEntries, setAvailabilityEntries] = useState<
     AdminProgramAvailability[]
   >([]);
+  const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState("");
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [availabilityFetchedAt, setAvailabilityFetchedAt] = useState("");
@@ -265,6 +266,7 @@ export default function AdminPage() {
         availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
         warning?: string;
+        updatedAt?: string | null;
         error?: string;
         details?: string;
       };
@@ -277,6 +279,7 @@ export default function AdminPage() {
         Array.isArray(data.availability) ? data.availability : []
       );
       setAvailabilityDebug(Array.isArray(data.debug) ? data.debug : []);
+      setAvailabilityUpdatedAt(data.updatedAt ?? "");
       if (data?.warning) {
         setAvailabilityError(data.warning);
       }
@@ -824,6 +827,12 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               <p className="text-xs text-slate-400">
                 Diagnostico de lectura y ajustes manuales por plantel.
               </p>
+              {availabilityUpdatedAt ? (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Ultima actualizacion cache:{" "}
+                  {new Date(availabilityUpdatedAt).toLocaleString("es-MX")}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
