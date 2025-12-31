@@ -11,7 +11,7 @@ const OAUTH_CLIENT_SECRET =
 const OAUTH_REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL?.trim() ?? "";
 const OAUTH_REFRESH_TOKEN =
   process.env.GOOGLE_SHEETS_OAUTH_REFRESH_TOKEN?.trim() ?? "";
-const CACHE_TTL_MS = 300_000;
+const CACHE_TTL_MS = 600_000;
 
 let cache: { timestamp: number; data: any[] } | null = null;
 
@@ -508,6 +508,16 @@ export default async function handler(req: any, res: any) {
               details,
             }
           : { availability: cache.data }
+      );
+      return;
+    }
+    if (details.includes("(429)")) {
+      sendJson(
+        res,
+        429,
+        wantsDebug
+          ? { error: "Cuota limitada de Google Sheets.", details }
+          : { error: "Cuota limitada de Google Sheets." }
       );
       return;
     }

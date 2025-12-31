@@ -256,9 +256,7 @@ export default function AdminPage() {
     setAvailabilityLoading(true);
     setAvailabilityError("");
     try {
-      const response = await fetch(
-        "/api/program-availability?debug=1&noCache=1"
-      );
+      const response = await fetch("/api/program-availability?debug=1");
       const data = (await response.json().catch(() => ({}))) as {
         availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
