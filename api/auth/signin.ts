@@ -1,8 +1,8 @@
-import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "./config.js";
-import { isAdminEmail } from "./admin.js";
-import { getSql } from "./db.js";
-import { verifyPassword } from "./password.js";
-import { sendJson, setCors } from "./response.js";
+import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "../../server/auth/config.js";
+import { isAdminEmail } from "../../server/auth/admin.js";
+import { getSql } from "../../server/auth/db.js";
+import { verifyPassword } from "../../server/auth/password.js";
+import { sendJson, setCors } from "../../server/auth/response.js";
 
 function parseBody(req: any) {
   if (!req?.body) return {};

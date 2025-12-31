@@ -1,5 +1,5 @@
 import { OAuth2Client } from "google-auth-library";
-import { setCors } from "../auth/response.js";
+import { setCors } from "../../server/auth/response.js";
 
 const CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";

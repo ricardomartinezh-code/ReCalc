@@ -1,6 +1,6 @@
-import { getSql } from "../auth/db.js";
-import { isAdminEmail } from "../auth/admin.js";
-import { sendJson, setCors } from "../auth/response.js";
+import { getSql } from "../../server/auth/db.js";
+import { isAdminEmail } from "../../server/auth/admin.js";
+import { sendJson, setCors } from "../../server/auth/response.js";
 
 const emptyConfig = {
   version: 1,
@@ -92,8 +92,10 @@ export default async function handler(req: any, res: any) {
         WHERE slug = ${slug}
         LIMIT 1;
       `;
-      const rows = Array.isArray(result) ? result : result.rows ?? [];
-      const config = rows.length ? rows[0].config : null;
+      const rows: any[] = Array.isArray(result)
+        ? result
+        : (result as any).rows ?? [];
+      const config = rows.length ? rows[0]?.config ?? null : null;
       sendJson(res, 200, { config: normalizeConfig(config) });
       return;
     }

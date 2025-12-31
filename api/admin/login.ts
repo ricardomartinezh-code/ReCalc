@@ -1,5 +1,5 @@
-import { isAdminEmail } from "../auth/admin.js";
-import { sendJson, setCors } from "../auth/response.js";
+import { isAdminEmail } from "../../server/auth/admin.js";
+import { sendJson, setCors } from "../../server/auth/response.js";
 
 function parseBody(req: any) {
   if (!req?.body) return {};

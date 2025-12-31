@@ -1,5 +1,5 @@
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
-import { sendJson, setCors } from "./auth/response.js";
+import { sendJson, setCors } from "../server/auth/response.js";
 
 const SHEET_ID =
   process.env.GOOGLE_SHEET_AVAILABILITY_ID ??

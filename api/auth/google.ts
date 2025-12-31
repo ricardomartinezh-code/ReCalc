@@ -1,8 +1,8 @@
 import { OAuth2Client } from "google-auth-library";
-import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "./config.js";
-import { isAdminEmail } from "./admin.js";
-import { getSql } from "./db.js";
-import { sendJson, setCors } from "./response.js";
+import { UNIVERSITY_DOMAINS, getEmailDomain, isAllowedDomain } from "../../server/auth/config.js";
+import { isAdminEmail } from "../../server/auth/admin.js";
+import { getSql } from "../../server/auth/db.js";
+import { sendJson, setCors } from "../../server/auth/response.js";
 
 const getClientId = () => process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
 const client = new OAuth2Client(getClientId() || undefined);
