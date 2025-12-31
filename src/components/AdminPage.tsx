@@ -256,7 +256,11 @@ export default function AdminPage() {
     setAvailabilityLoading(true);
     setAvailabilityError("");
     try {
-      const response = await fetch("/api/program-availability?debug=1");
+      const response = await fetch(
+        `/api/program-availability?debug=1&refresh=1&slug=${encodeURIComponent(
+          activeSlug || "unidep"
+        )}`
+      );
       const data = (await response.json().catch(() => ({}))) as {
         availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
@@ -971,6 +975,16 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                 }
                                 className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
                                 placeholder="Horario"
+                              />
+                              <input
+                                value={entry.planUrl ?? ""}
+                                onChange={(event) =>
+                                  upsertAvailabilityOverride(entry, {
+                                    planUrl: event.target.value,
+                                  })
+                                }
+                                className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                placeholder="URL plan de estudios"
                               />
                               <label className="flex items-center gap-2 text-[11px] text-slate-300">
                                 <input

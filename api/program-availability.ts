@@ -1,5 +1,6 @@
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { sendJson, setCors } from "../server/auth/response.js";
+import { getSql } from "../server/auth/db.js";
 
 const SHEET_ID =
   process.env.GOOGLE_SHEET_AVAILABILITY_ID ??
@@ -470,6 +471,33 @@ const fetchAvailability = async () => {
   };
 };
 
+const getAvailabilityCache = async (slug: string) => {
+  const sql = await getSql();
+  const result = await sql`
+    SELECT payload, updated_at
+    FROM availability_cache
+    WHERE slug = ${slug}
+    LIMIT 1;
+  `;
+  const rows = Array.isArray(result) ? result : (result as any).rows ?? [];
+  if (!rows.length) return null;
+  return {
+    payload: rows[0]?.payload ?? null,
+    updatedAt: rows[0]?.updated_at ? new Date(rows[0].updated_at) : null,
+  };
+};
+
+const saveAvailabilityCache = async (slug: string, payload: any) => {
+  const sql = await getSql();
+  await sql`
+    INSERT INTO availability_cache (slug, payload, updated_at)
+    VALUES (${slug}, ${payload}, NOW())
+    ON CONFLICT (slug)
+    DO UPDATE SET payload = EXCLUDED.payload,
+                  updated_at = EXCLUDED.updated_at;
+  `;
+};
+
 export default async function handler(req: any, res: any) {
   setCors(res);
   if (req.method === "OPTIONS") {
@@ -485,29 +513,55 @@ export default async function handler(req: any, res: any) {
 
   const url = new URL(req.url ?? "", "http://localhost");
   const wantsDebug = url.searchParams.get("debug") === "1";
-  const noCache = url.searchParams.get("noCache") === "1";
+  const wantsRefresh = url.searchParams.get("refresh") === "1";
+  const slug = String(url.searchParams.get("slug") ?? "unidep")
+    .trim()
+    .toLowerCase();
   try {
-    if (!noCache && cache && Date.now() - cache.timestamp < CACHE_TTL_MS) {
-      sendJson(res, 200, { availability: cache.data });
+    const cached = await getAvailabilityCache(slug);
+    const cacheAge = cached?.updatedAt
+      ? Date.now() - cached.updatedAt.getTime()
+      : Number.POSITIVE_INFINITY;
+    const cacheFresh = cacheAge < CACHE_TTL_MS;
+
+    if (!wantsRefresh && cached?.payload && cacheFresh) {
+      const payload = cached.payload as { availability?: any[]; debug?: any[] };
+      sendJson(
+        res,
+        200,
+        wantsDebug
+          ? { availability: payload.availability ?? [], debug: payload.debug }
+          : { availability: payload.availability ?? [] }
+      );
       return;
     }
+
     const { availability, debug } = await fetchAvailability();
+    const payload = { availability, debug };
     cache = { timestamp: Date.now(), data: availability };
-    sendJson(res, 200, wantsDebug ? { availability, debug } : { availability });
+    await saveAvailabilityCache(slug, payload);
+    sendJson(res, 200, wantsDebug ? payload : { availability });
   } catch (err) {
     const details =
       err instanceof Error ? err.message : "Error desconocido.";
-    if (cache && details.includes("(429)")) {
+    const cached = await getAvailabilityCache(
+      String(url.searchParams.get("slug") ?? "unidep")
+        .trim()
+        .toLowerCase()
+    );
+    if (cached?.payload && details.includes("(429)")) {
+      const payload = cached.payload as { availability?: any[]; debug?: any[] };
       sendJson(
         res,
         200,
         wantsDebug
           ? {
-              availability: cache.data,
+              availability: payload.availability ?? [],
+              debug: payload.debug,
               warning: "Cuota limitada; se uso cache reciente.",
               details,
             }
-          : { availability: cache.data }
+          : { availability: payload.availability ?? [] }
       );
       return;
     }
