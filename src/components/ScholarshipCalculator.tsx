@@ -1313,9 +1313,15 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return Array.from(map.values());
   }, [availabilityRemote, adminConfig.programAvailability]);
 
+
+  const plantelDisponibilidadKey =
+    modalidad === "online"
+      ? "ONLINE"
+      : plantel || plantelDisponibilidadManual;
+
   const programasDisponibles = useMemo(() => {
     if (nivel !== "licenciatura") return [];
-    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    const plantelKey = plantelDisponibilidadKey;
     if (!plantelKey) return [];
     const entries = resolveProgramAvailability(
       adminConfig,
@@ -1328,12 +1334,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
         .filter((entry): entry is string => Boolean(entry))
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b, "es"));
-  }, [adminConfig, availabilityMerged, nivel, modalidad, plantel]);
-
-  const plantelDisponibilidadKey =
-    modalidad === "online"
-      ? "ONLINE"
-      : plantel || plantelDisponibilidadManual;
+  }, [adminConfig, availabilityMerged, nivel, plantelDisponibilidadKey]);
 
   const disponibilidadDetalle = useMemo(() => {
     if (nivel !== "licenciatura") return null;
@@ -1385,21 +1386,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     programaAcademico,
   ]);
 
-  const lineaNegocioPrograma = useMemo(() => {
-    if (!programaAcademico) return null;
-    return resolveLineaNegocio(programaAcademico);
-  }, [programaAcademico]);
-
-const materiasOpciones = useMemo(
-    () => [
-      "1 materia",
-      "2 materias",
-      "3 materias",
-      "4 materias (plan completo 11 cuatrimestres)",
-      "5 materias (plan base Salud y Bachillerato; 9 cuatrimestres)",
-    ],
-    []
-  );
 
   const normalizeProgramaText = (value: string) =>
     value
@@ -1427,6 +1413,21 @@ const materiasOpciones = useMemo(
     }
     return { key: "licenciatura", label: "Licenciatura" };
   };
+  const lineaNegocioPrograma = useMemo(() => {
+    if (!programaAcademico) return null;
+    return resolveLineaNegocio(programaAcademico);
+  }, [programaAcademico]);
+
+  const materiasOpciones = useMemo(
+    () => [
+      "1 materia",
+      "2 materias",
+      "3 materias",
+      "4 materias (plan completo 11 cuatrimestres)",
+      "5 materias (plan base Salud y Bachillerato; 9 cuatrimestres)",
+    ],
+    []
+  );
 
   const materiasSelect = (
     <SearchableSelect
