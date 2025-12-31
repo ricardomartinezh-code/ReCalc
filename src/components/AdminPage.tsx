@@ -253,12 +253,12 @@ export default function AdminPage() {
     }
   };
 
-  const refreshAvailabilityDebug = async () => {
+  const refreshAvailabilityDebug = async (mode: "refresh" | "cache") => {
     setAvailabilityLoading(true);
     setAvailabilityError("");
     try {
       const response = await fetch(
-        `/api/program-availability?debug=1&refresh=1&slug=${encodeURIComponent(
+        `/api/program-availability?debug=1${mode === "refresh" ? "&refresh=1" : ""}&slug=${encodeURIComponent(
           activeSlug || "unidep"
         )}`
       );
@@ -295,6 +295,12 @@ export default function AdminPage() {
     }
   };
 
+  const loadAvailabilityCache = async () =>
+    refreshAvailabilityDebug("cache");
+
+  const refreshAvailabilityFromSheets = async () =>
+    refreshAvailabilityDebug("refresh");
+
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -316,6 +322,7 @@ export default function AdminPage() {
         if (!active) return;
         setConfig(remote);
         saveAdminConfig(activeSlug, remote);
+        await loadAvailabilityCache();
       } catch (err) {
         if (!active) return;
         setError("No fue posible cargar la configuracion del servidor.");
@@ -837,12 +844,24 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={refreshAvailabilityDebug}
+                onClick={loadAvailabilityCache}
                 disabled={availabilityLoading}
                 className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
                   availabilityLoading
                     ? "cursor-not-allowed border-slate-800 text-slate-500"
                     : "border-slate-700 text-slate-300 hover:border-slate-400 hover:text-slate-100"
+                }`}
+              >
+                {availabilityLoading ? "Cargando..." : "Cargar cache"}
+              </button>
+              <button
+                type="button"
+                onClick={refreshAvailabilityFromSheets}
+                disabled={availabilityLoading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  availabilityLoading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-emerald-500/60 text-emerald-200 hover:border-emerald-300 hover:text-emerald-100"
                 }`}
               >
                 {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
