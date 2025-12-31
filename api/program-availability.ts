@@ -47,6 +47,117 @@ const isTruthyCell = (value: string, needles: string[]) => {
   return needles.some((needle) => normalized.includes(needle));
 };
 
+const isIgnoredSheet = (sheetName: string) =>
+  normalizeText(sheetName) === "oferta general";
+
+const resolveAvailabilityFromRow = (row: string[]) => {
+  const normalizedCells = row.map((cell) => normalizeText(cell));
+  const valueCell = row.find((cell, idx) => {
+    const value = normalizedCells[idx];
+    if (!value) return false;
+    return (
+      value === "true" ||
+      value === "false" ||
+      value === "si" ||
+      value === "no" ||
+      value === "1" ||
+      value === "0" ||
+      value === "verdadero" ||
+      value === "falso" ||
+      value === "disponible" ||
+      value === "no disponible"
+    );
+  });
+  if (valueCell) return parseAvailability(valueCell);
+  return true;
+};
+
+const buildOnlineAvailability = (
+  rows: unknown[][],
+  plantelName: string
+): { entries: any[]; debug: any } => {
+  if (!rows.length) {
+    return {
+      entries: [],
+      debug: { plantel: plantelName, warnings: ["Hoja sin datos."] },
+    };
+  }
+  const normalizedRows = rows.map((row) =>
+    row.map((cell) => String(cell ?? ""))
+  );
+  const warnings: string[] = [];
+  const sectionLabels = [
+    "licenciatura online actual",
+    "licenciatura online nuevos programas",
+    "posgrados online",
+    "maestria online",
+  ];
+  const sectionRows = normalizedRows
+    .map((row, idx) => {
+      const label = row.find((cell) =>
+        sectionLabels.includes(normalizeText(cell))
+      );
+      return label ? { index: idx, label: normalizeText(label) } : null;
+    })
+    .filter(Boolean) as Array<{ index: number; label: string }>;
+
+  if (!sectionRows.length) {
+    warnings.push("No se encontraron encabezados de online.");
+  }
+
+  const entries: any[] = [];
+  const sortedSections = sectionRows.sort((a, b) => a.index - b.index);
+  const boundaries = sortedSections.map((section, idx) => ({
+    start: section.index + 1,
+    end: sortedSections[idx + 1]?.index ?? normalizedRows.length,
+    label: section.label,
+  }));
+
+  boundaries.forEach((section) => {
+    for (let i = section.start; i < section.end; i += 1) {
+      const row = normalizedRows[i];
+      if (!row.some((cell) => String(cell ?? "").trim())) continue;
+      const programCell =
+        row.find((cell) => {
+          const normalized = normalizeText(cell);
+          if (!normalized) return false;
+          if (sectionLabels.includes(normalized)) return false;
+          if (normalized === "programa" || normalized === "programas") return false;
+          if (normalized === "oferta") return false;
+          return true;
+        }) ?? "";
+      const programa = String(programCell).trim();
+      if (!programa) continue;
+      const activo = resolveAvailabilityFromRow(row);
+      entries.push({
+        id: `sheet-${plantelName}-${section.label}-${i}-online`,
+        plantel: plantelName,
+        programa,
+        modalidad: "online",
+        horario: "",
+        activo,
+      });
+    }
+  });
+
+  return {
+    entries,
+    debug: {
+      plantel: plantelName,
+      mode: "online",
+      sections: sortedSections,
+      entries: entries.length,
+      warnings,
+      sample: entries.slice(0, 5).map((entry) => ({
+        programa: entry.programa,
+        modalidad: entry.modalidad,
+        activo: entry.activo,
+        horario: entry.horario,
+      })),
+    },
+  };
+};
+
 
 
 const getAccessToken = async () => {
@@ -119,6 +230,15 @@ const buildAvailability = (
   rows: unknown[][],
   plantelName: string
 ): { entries: any[]; debug: any } => {
+  if (isIgnoredSheet(plantelName)) {
+    return {
+      entries: [],
+      debug: { plantel: plantelName, warnings: ["Hoja ignorada."] },
+    };
+  }
+  if (normalizeText(plantelName).includes("online")) {
+    return buildOnlineAvailability(rows, plantelName);
+  }
   if (!rows.length) {
     return {
       entries: [],
