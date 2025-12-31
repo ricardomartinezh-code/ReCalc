@@ -179,6 +179,9 @@ export default function AdminPage() {
   const [availabilityDebug, setAvailabilityDebug] = useState<
     AvailabilityDebugEntry[] | null
   >(null);
+  const [availabilityEntries, setAvailabilityEntries] = useState<
+    AdminProgramAvailability[]
+  >([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [availabilityFetchedAt, setAvailabilityFetchedAt] = useState("");
@@ -257,6 +260,7 @@ export default function AdminPage() {
         "/api/program-availability?debug=1&noCache=1"
       );
       const data = (await response.json().catch(() => ({}))) as {
+        availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
         error?: string;
         details?: string;
@@ -266,6 +270,9 @@ export default function AdminPage() {
           data?.details || data?.error || "No fue posible leer disponibilidad."
         );
       }
+      setAvailabilityEntries(
+        Array.isArray(data.availability) ? data.availability : []
+      );
       setAvailabilityDebug(Array.isArray(data.debug) ? data.debug : []);
       setAvailabilityFetchedAt(new Date().toLocaleString("es-MX"));
     } catch (err) {
@@ -371,6 +378,117 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       next[index] = { ...next[index], ...patch };
       return { ...prev, programAvailability: next };
     });
+
+  const [availabilityExpanded, setAvailabilityExpanded] = useState<Record<string, boolean>>({});
+
+  const normalizeAvailabilityValue = (value: string) =>
+    value.trim().toLowerCase();
+
+  const buildAvailabilityKey = (entry: AdminProgramAvailability) => {
+    const plantelKey = normalizeAvailabilityValue(entry.plantel ?? "");
+    const programaKey = normalizeAvailabilityValue(entry.programa ?? "");
+    const modalidadKey = normalizeAvailabilityValue(entry.modalidad ?? "");
+    if (!plantelKey || !programaKey || !modalidadKey) return "";
+    return `${plantelKey}::${programaKey}::${modalidadKey}`;
+  };
+
+  const findAvailabilityOverrideIndex = (entry: AdminProgramAvailability) =>
+    config.programAvailability.findIndex((item) =>
+      buildAvailabilityKey(item) === buildAvailabilityKey(entry)
+    );
+
+  const upsertAvailabilityOverride = (
+    entry: AdminProgramAvailability,
+    patch: Partial<AdminProgramAvailability>
+  ) =>
+    updateConfig((prev) => {
+      const next = [...prev.programAvailability];
+      const idx = prev.programAvailability.findIndex((item) =>
+        buildAvailabilityKey(item) === buildAvailabilityKey(entry)
+      );
+      if (idx >= 0) {
+        next[idx] = { ...next[idx], ...patch };
+      } else {
+        next.push({
+          id: buildId(),
+          plantel: entry.plantel ?? "",
+          programa: entry.programa ?? "",
+          modalidad: entry.modalidad ?? "presencial",
+          horario: entry.horario ?? "",
+          activo: typeof entry.activo === "boolean" ? entry.activo : true,
+          ...patch,
+        });
+      }
+      return { ...prev, programAvailability: next };
+    });
+
+  const availabilityMerged = useMemo(() => {
+    const map = new Map<
+      string,
+      AdminProgramAvailability & { source: "sheet" | "override" | "admin" }
+    >();
+    availabilityEntries.forEach((entry) => {
+      const key = buildAvailabilityKey(entry);
+      if (!key) return;
+      map.set(key, { ...entry, source: "sheet" });
+    });
+    config.programAvailability.forEach((entry) => {
+      const key = buildAvailabilityKey(entry);
+      if (!key) return;
+      const existing = map.get(key);
+      map.set(key, { ...entry, source: existing ? "override" : "admin" });
+    });
+    return Array.from(map.values());
+  }, [availabilityEntries, config.programAvailability]);
+
+  const availabilityByPlantel = useMemo(() => {
+    const byPlantel = new Map<string, (AdminProgramAvailability & { source: string })[]>();
+    availabilityMerged.forEach((entry) => {
+      const plantelKey = String(entry.plantel ?? "").trim();
+      if (!plantelKey) return;
+      const list = byPlantel.get(plantelKey) ?? [];
+      list.push(entry);
+      byPlantel.set(plantelKey, list);
+    });
+    byPlantel.forEach((list, plantelKey) => {
+      list.sort((a, b) =>
+        String(a.programa ?? "").localeCompare(String(b.programa ?? ""), "es") ||
+        String(a.modalidad ?? "").localeCompare(String(b.modalidad ?? ""), "es")
+      );
+    });
+    return byPlantel;
+  }, [availabilityMerged]);
+
+  const availabilityDebugByPlantel = useMemo(() => {
+    const map = new Map<string, AvailabilityDebugEntry>();
+    (availabilityDebug ?? []).forEach((entry) => {
+      map.set(String(entry.plantel ?? ""), entry);
+    });
+    return map;
+  }, [availabilityDebug]);
+
+  const toggleAvailabilityPlantel = (plantel: string) =>
+    setAvailabilityExpanded((prev) => ({
+      ...prev,
+      [plantel]: !prev[plantel],
+    }));
+
+  const handleAddAvailabilityProgram = (plantel: string) =>
+    updateConfig((prev) => ({
+      ...prev,
+      programAvailability: [
+        ...prev.programAvailability,
+        {
+          id: buildId(),
+          plantel,
+          programa: "Nuevo programa",
+          modalidad: "presencial",
+          horario: "",
+          activo: true,
+        },
+      ],
+    }));
+
 
   const handleSave = async () => {
     if (!session) return;
@@ -680,235 +798,210 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Diagnostico de lectura (Sheets)
-            </h2>
-            <p className="text-xs text-slate-400">
-              Revisa si la lectura detecta encabezados y columnas esperadas.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={refreshAvailabilityDebug}
-              disabled={availabilityLoading}
-              className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
-                availabilityLoading
-                  ? "cursor-not-allowed border-slate-800 text-slate-500"
-                  : "border-slate-700 text-slate-300 hover:border-slate-400 hover:text-slate-100"
-              }`}
-            >
-              {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
-            </button>
-            {availabilityFetchedAt ? (
-              <span className="text-xs text-slate-400">
-                Ultima lectura: {availabilityFetchedAt}
-              </span>
-            ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Disponibilidad de programas (Sheets + overrides)
+              </h2>
+              <p className="text-xs text-slate-400">
+                Diagnostico de lectura y ajustes manuales por plantel.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={refreshAvailabilityDebug}
+                disabled={availabilityLoading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  availabilityLoading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-slate-700 text-slate-300 hover:border-slate-400 hover:text-slate-100"
+                }`}
+              >
+                {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
+              </button>
+              {availabilityFetchedAt ? (
+                <span className="text-xs text-slate-400">
+                  Ultima lectura: {availabilityFetchedAt}
+                </span>
+              ) : null}
+            </div>
           </div>
           {availabilityError ? (
             <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
               {availabilityError}
             </div>
           ) : null}
-          {availabilityDebug ? (
-            <div className="space-y-2 text-xs text-slate-200">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-slate-300">
-                Total registros leidos:{" "}
-                {availabilityDebug.reduce(
-                  (total, entry) => total + Number(entry.entries ?? 0),
-                  0
-                )}
-              </div>
-              <div className="space-y-2">
-                {availabilityDebug.map((entry) => (
+          {availabilityPlantels.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
+              Sin datos de disponibilidad cargados.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {availabilityPlantels.map((plantel) => {
+                const entries = availabilityByPlantel.get(plantel) ?? [];
+                const debug = availabilityDebugByPlantel.get(plantel);
+                const expanded = availabilityExpanded[plantel];
+                const preview = entries.slice(0, 5);
+                return (
                   <div
-                    key={entry.plantel}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
+                    key={plantel}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-semibold text-slate-100">
-                        {entry.plantel}
-                      </span>
-                      <span className="text-[11px] uppercase tracking-wide text-slate-400">
-                        {entry.entries ?? 0} registros
-                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">
+                          {plantel}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                          {entries.length} registros
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleAvailabilityPlantel(plantel)}
+                          className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+                        >
+                          {expanded ? "Ocultar listado" : "Ver listado completo"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAddAvailabilityProgram(plantel)}
+                          className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-emerald-400/70 hover:text-emerald-200 transition"
+                        >
+                          Agregar programa
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-2 text-[11px] text-slate-400">
-                      encabezado: {entry.headerIndex ?? "-"} | 2026:{" "}
-                      {entry.yearIndex ?? "-"} | modalidad:{" "}
-                      {entry.modalidadIndex ?? "-"} | col escolarizado:{" "}
-                      {entry.escolarizadoCol ?? "-"} | col ejecutivo:{" "}
-                      {entry.ejecutivoCol ?? "-"} | horarios:{" "}
-                      {entry.horariosIndex ?? "-"} | col horarios:{" "}
-                      {entry.horariosHeaderCol ?? "-"} | horario escolarizado:{" "}
-                      {entry.scheduleEscolarizadoCol ?? "-"} | horario ejecutivo:{" "}
-                      {entry.scheduleEjecutivoCol ?? "-"}
-                    </div>
-                    {entry.warnings?.length ? (
-                      <div className="mt-2 rounded-lg border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-                        {entry.warnings.join(" ")}
+                    {debug?.warnings?.length ? (
+                      <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                        {debug.warnings.join(" ")}
                       </div>
                     ) : null}
-                    {entry.sample?.length ? (
-                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-2 text-[11px] text-slate-300">
-                        <div className="mb-1 text-[10px] uppercase tracking-wide text-slate-400">
-                          Preview
-                        </div>
-                        <div className="space-y-1">
-                          {entry.sample.map((item, idx) => (
-                            <div
-                              key={`${entry.plantel}-${idx}`}
-                              className="flex flex-wrap items-center gap-2"
+                    {!expanded ? (
+                      <div className="space-y-2 text-xs text-slate-200">
+                        {preview.map((entry, idx) => (
+                          <div
+                            key={`${plantel}-preview-${idx}`}
+                            className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2"
+                          >
+                            <span className="font-semibold text-slate-100">
+                              {entry.programa}
+                            </span>
+                            <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                              {entry.modalidad}
+                            </span>
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                                entry.activo
+                                  ? "border-emerald-400/50 text-emerald-200"
+                                  : "border-rose-400/50 text-rose-200"
+                              }`}
                             >
-                              <span className="font-semibold text-slate-100">
-                                {item.programa}
-                              </span>
-                              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
-                                {item.modalidad}
-                              </span>
-                              <span
-                                className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-                                  item.activo
-                                    ? "border-emerald-400/50 text-emerald-200"
-                                    : "border-rose-400/50 text-rose-200"
-                                }`}
-                              >
-                                {item.activo ? "Disponible" : "No disponible"}
-                              </span>
-                              {item.horario ? (
-                                <span className="text-[10px] text-slate-400">
-                                  {item.horario}
+                              {entry.activo ? "Disponible" : "No disponible"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {entries.map((entry, idx) => {
+                          const isEditable = entry.source === "admin";
+                          const isOverride = entry.source === "override";
+                          return (
+                            <div
+                              key={`${plantel}-${idx}`}
+                              className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2 text-xs"
+                            >
+                              {isEditable ? (
+                                <input
+                                  value={entry.programa}
+                                  onChange={(event) =>
+                                    updateProgramAvailability(
+                                      findAvailabilityOverrideIndex(entry),
+                                      { programa: event.target.value }
+                                    )
+                                  }
+                                  className="flex-1 min-w-[220px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                  placeholder="Programa academico"
+                                />
+                              ) : (
+                                <span className="flex-1 min-w-[220px] font-semibold text-slate-100">
+                                  {entry.programa}
                                 </span>
+                              )}
+                              <select
+                                value={entry.modalidad}
+                                onChange={(event) =>
+                                  isEditable
+                                    ? updateProgramAvailability(
+                                        findAvailabilityOverrideIndex(entry),
+                                        { modalidad: event.target.value }
+                                      )
+                                    : undefined
+                                }
+                                disabled={!isEditable}
+                                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                              >
+                                <option value="presencial">Escolarizado</option>
+                                <option value="mixta">Ejecutivo</option>
+                                <option value="online">Online</option>
+                              </select>
+                              <input
+                                value={entry.horario ?? ""}
+                                onChange={(event) =>
+                                  upsertAvailabilityOverride(entry, {
+                                    horario: event.target.value,
+                                  })
+                                }
+                                className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                placeholder="Horario"
+                              />
+                              <label className="flex items-center gap-2 text-[11px] text-slate-300">
+                                <input
+                                  type="checkbox"
+                                  className="accent-emerald-500"
+                                  checked={Boolean(entry.activo)}
+                                  onChange={(event) =>
+                                    upsertAvailabilityOverride(entry, {
+                                      activo: event.target.checked,
+                                    })
+                                  }
+                                />
+                                Disponible
+                              </label>
+                              <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+                                {isOverride ? "override" : entry.source}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  upsertAvailabilityOverride(entry, { activo: false })
+                                }
+                                className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                              >
+                                Ocultar
+                              </button>
+                              {isEditable || isOverride ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeAvailabilityOverride(entry)}
+                                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+                                >
+                                  Quitar override
+                                </button>
                               ) : null}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    ) : null}
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ) : null}
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Disponibilidad de programas por plantel
-            </h2>
-            <p className="text-xs text-slate-400">
-              Define si un programa académico está disponible en cada plantel.
-            </p>
-          </div>
-          <div className="space-y-3">
-            {(config.programAvailability ?? []).map((entry, index) => (
-              <div
-                key={entry.id || `${entry.programa}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.4fr_1fr_1.4fr_.7fr_auto]"
-              >
-                <select
-                  value={entry.plantel}
-                  onChange={(event) =>
-                    updateProgramAvailability(index, {
-                      plantel: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  {plantelOptions.map((plantel) => (
-                    <option key={plantel} value={plantel}>
-                      {plantel}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={entry.programa}
-                  onChange={(event) =>
-                    updateProgramAvailability(index, {
-                      programa: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="Programa académico"
-                />
-                <select
-                  value={entry.modalidad}
-                  onChange={(event) =>
-                    updateProgramAvailability(index, {
-                      modalidad: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="presencial">Escolarizado</option>
-                  <option value="mixta">Ejecutivo</option>
-                  <option value="online">Online</option>
-                </select>
-                <input
-                  value={entry.horario}
-                  onChange={(event) =>
-                    updateProgramAvailability(index, {
-                      horario: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="Horario (opcional)"
-                />
-                <label className="flex items-center gap-2 text-[11px] text-slate-300">
-                  <input
-                    type="checkbox"
-                    className="accent-emerald-500"
-                    checked={entry.activo}
-                    onChange={(event) =>
-                      updateProgramAvailability(index, {
-                        activo: event.target.checked,
-                      })
-                    }
-                  />
-                  Disponible
-                </label>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateConfig((prev) => ({
-                      ...prev,
-                      programAvailability: prev.programAvailability.filter(
-                        (_, idx) => idx !== index
-                      ),
-                    }))
-                  }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
-                >
-                  Quitar
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                updateConfig((prev) => ({
-                  ...prev,
-                  programAvailability: [
-                    ...prev.programAvailability,
-                    {
-                      id: buildId(),
-                      plantel: plantelOptions[0] ?? "",
-                      programa: "",
-                      modalidad: "presencial",
-                      horario: "",
-                      activo: true,
-                    },
-                  ],
-                }))
-              }
-              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
-            >
-              Agregar programa
-            </button>
-          </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
