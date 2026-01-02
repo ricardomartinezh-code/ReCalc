@@ -726,16 +726,31 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
               Descuentos adicionales por defecto
             </h2>
-            <p className="text-xs text-slate-400">
-              Define el porcentaje y si el descuento extra debe estar activo.
-            </p>
+              <p className="text-xs text-slate-400">
+                Define linea de negocio, modalidad, plantel y porcentaje del descuento.
+              </p>
           </div>
           <div className="space-y-3">
             {config.defaults.beneficio.rules.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.3fr_.8fr_.8fr_1.6fr_auto]"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]"
               >
+                <select
+                  value={rule.lineaNegocio ?? "*"}
+                  onChange={(event) =>
+                    updateBenefitRule(index, {
+                      lineaNegocio: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                >
+                  {nivelOptionsAll.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
                 <select
                   value={rule.modalidad}
                   onChange={(event) =>
@@ -830,6 +845,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       rules: [
                         ...prev.defaults.beneficio.rules,
                         {
+                          lineaNegocio: "*",
                           modalidad: "*",
                           plantel: "*",
                           activo: false,

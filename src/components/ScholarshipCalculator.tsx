@@ -807,8 +807,14 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const benefitRule = useMemo(() => {
     if (!modalidad || isRegreso) return null;
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
-    return resolveDefaultBenefit(adminConfig, modalidad, plantelKey || "");
-  }, [adminConfig, modalidad, plantel, isRegreso]);
+    const lineaNegocio = nivel || "*";
+    return resolveDefaultBenefit(
+      adminConfig,
+      modalidad,
+      plantelKey || "",
+      lineaNegocio
+    );
+  }, [adminConfig, modalidad, plantel, nivel, isRegreso]);
 
   const benefitComment = useMemo(() => {
     if (!benefitRule?.comentario) return "";
