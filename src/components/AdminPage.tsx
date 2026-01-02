@@ -337,15 +337,23 @@ export default function AdminPage() {
     }
   };
 
-  const refreshAvailabilityDebug = async (mode: "refresh" | "cache") => {
+  const refreshAvailabilityDebug = async (
+    mode: "refresh" | "cache" | "csv"
+  ) => {
     setAvailabilityLoading(true);
     setAvailabilityError("");
     try {
-      const response = await fetch(
-        `/api/program-availability?debug=1${mode === "refresh" ? "&refresh=1" : "&cache=1"}&slug=${encodeURIComponent(
-          activeSlug || "unidep"
-        )}`
-      );
+      const endpoint =
+        mode === "csv"
+          ? `/api/program-availability-csv?debug=1&slug=${encodeURIComponent(
+              activeSlug || "unidep"
+            )}`
+          : `/api/program-availability?debug=1${
+              mode === "refresh" ? "&refresh=1" : "&cache=1"
+            }&slug=${encodeURIComponent(activeSlug || "unidep")}`;
+      const response = await fetch(endpoint, {
+        method: mode === "csv" ? "POST" : "GET",
+      });
       const data = (await response.json().catch(() => ({}))) as {
         availability?: AdminProgramAvailability[];
         debug?: AvailabilityDebugEntry[];
@@ -384,6 +392,8 @@ export default function AdminPage() {
 
   const refreshAvailabilityFromSheets = async () =>
     refreshAvailabilityDebug("refresh");
+  const refreshAvailabilityFromCsv = async () =>
+    refreshAvailabilityDebug("csv");
 
   useEffect(() => {
     let active = true;
@@ -1355,6 +1365,18 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 }`}
               >
                 {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
+              </button>
+              <button
+                type="button"
+                onClick={refreshAvailabilityFromCsv}
+                disabled={availabilityLoading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  availabilityLoading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-cyan-500/60 text-cyan-200 hover:border-cyan-300 hover:text-cyan-100"
+                }`}
+              >
+                {availabilityLoading ? "Leyendo..." : "Actualizar desde CSV"}
               </button>
               <button
                 type="button"
