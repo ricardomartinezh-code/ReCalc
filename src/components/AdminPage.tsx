@@ -15,6 +15,7 @@ import {
   clearAdminConfig,
   fetchAdminConfig,
   getAdminConfig,
+  resolveDefaultBenefit,
   saveAdminConfig,
   updateAdminConfig,
 } from "../utils/adminConfig";
@@ -186,6 +187,20 @@ export default function AdminPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [availabilityFetchedAt, setAvailabilityFetchedAt] = useState("");
+  const [previewLinea, setPreviewLinea] = useState<Nivel | "*">("licenciatura");
+  const [previewModalidad, setPreviewModalidad] = useState("presencial");
+  const [previewPlantel, setPreviewPlantel] = useState("*");
+
+  const previewRule = useMemo(
+    () =>
+      resolveDefaultBenefit(
+        config,
+        previewModalidad,
+        previewPlantel,
+        previewLinea === "*" ? "*" : previewLinea
+      ),
+    [config, previewLinea, previewModalidad, previewPlantel]
+  );
 
   const adjustmentFieldClass =
     "w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
@@ -352,6 +367,36 @@ export default function AdminPage() {
           beneficio: { ...prev.defaults.beneficio, rules: next },
         },
       };
+    });
+
+  const normalizeBenefitPlanteles = (value: AdminBenefitRule["plantel"]) => {
+    if (Array.isArray(value)) {
+      const cleaned = value.map((entry) => String(entry ?? "").trim()).filter(Boolean);
+      return cleaned.length ? cleaned : ["*"];
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed ? [trimmed] : ["*"];
+    }
+    return ["*"];
+  };
+
+  const toggleBenefitPlantel = (index: number, plantelValue: string) =>
+    updateBenefitRule(index, {
+      plantel: (() => {
+        const current = normalizeBenefitPlanteles(
+          config.defaults.beneficio.rules[index]?.plantel
+        );
+        if (plantelValue === "*") {
+          return ["*"];
+        }
+        const withoutAll = current.filter((entry) => entry !== "*");
+        if (withoutAll.includes(plantelValue)) {
+          const next = withoutAll.filter((entry) => entry !== plantelValue);
+          return next.length ? next : ["*"];
+        }
+        return [...withoutAll, plantelValue];
+      })(),
     });
 
   const updateOverride = (index: number, patch: Partial<AdminPriceOverride>) =>
@@ -787,20 +832,42 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
                     Plantel
                   </span>
-                  <select
-                    value={rule.plantel}
-                    onChange={(event) =>
-                      updateBenefitRule(index, { plantel: event.target.value })
-                    }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  >
-                    <option value="*">Todos los planteles</option>
-                    {plantelOptions.map((plantel) => (
-                      <option key={plantel} value={plantel}>
-                        {plantel}
-                      </option>
-                    ))}
-                  </select>
+                <details className="relative">
+                  <summary className="cursor-pointer list-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100">
+                    {(() => {
+                      const selected = normalizeBenefitPlanteles(rule.plantel);
+                      if (selected.includes("*")) return "Todos los planteles";
+                      return `${selected.length} plantel${selected.length === 1 ? "" : "es"}`;
+                      })()}
+                    </summary>
+                    <div className="absolute z-20 mt-1 w-full min-w-[220px] rounded-lg border border-slate-700 bg-slate-950/95 p-2 text-xs text-slate-200 shadow-xl">
+                      <label className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70">
+                        <input
+                          type="checkbox"
+                          className="accent-emerald-500"
+                          checked={normalizeBenefitPlanteles(rule.plantel).includes("*")}
+                          onChange={() => toggleBenefitPlantel(index, "*")}
+                        />
+                        Todos los planteles
+                      </label>
+                      <div className="mt-2 max-h-40 overflow-y-auto border-t border-slate-800 pt-2 space-y-1">
+                        {plantelOptions.map((plantel) => (
+                          <label
+                            key={plantel}
+                            className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70"
+                          >
+                            <input
+                              type="checkbox"
+                              className="accent-emerald-500"
+                              checked={normalizeBenefitPlanteles(rule.plantel).includes(plantel)}
+                              onChange={() => toggleBenefitPlantel(index, plantel)}
+                            />
+                            {plantel}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
@@ -886,7 +953,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         {
                           lineaNegocio: "*",
                           modalidad: "*",
-                          plantel: "*",
+                          plantel: ["*"],
                           activo: false,
                           porcentaje: 10,
                           comentario: "",
@@ -900,6 +967,68 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             >
               Agregar regla
             </button>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-200">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              Vista previa en UI publica
+            </p>
+            <div className="mt-2 grid gap-2 md:grid-cols-3">
+              <select
+                value={previewLinea}
+                onChange={(event) => setPreviewLinea(event.target.value as Nivel | "*")}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {nivelOptionsAll.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={previewModalidad}
+                onChange={(event) => setPreviewModalidad(event.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {modalidadOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={previewPlantel}
+                onChange={(event) => setPreviewPlantel(event.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                <option value="*">Todos los planteles</option>
+                {plantelOptions.map((plantel) => (
+                  <option key={plantel} value={plantel}>
+                    {plantel}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-3 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2">
+              {previewRule ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-emerald-500/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-200">
+                    {previewRule.activo ? "Activo" : "Inactivo"}
+                  </span>
+                  <span className="text-xs text-slate-100">
+                    {previewRule.porcentaje}% de beneficio
+                  </span>
+                  {previewRule.comentario ? (
+                    <span className="text-[11px] text-amber-100">
+                      {previewRule.comentario}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400">
+                  Sin beneficio configurado para esta combinacion.
+                </span>
+              )}
+            </div>
           </div>
         </section>
 

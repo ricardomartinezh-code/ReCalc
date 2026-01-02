@@ -1,6 +1,6 @@
 export type AdminBenefitRule = {
   modalidad: string;
-  plantel: string;
+  plantel: string[] | string;
   lineaNegocio: string;
   activo: boolean;
   porcentaje: number;
@@ -117,14 +117,24 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
         ...fallback.defaults.beneficio,
         ...(config.defaults?.beneficio ?? {}),
         rules: Array.isArray(config.defaults?.beneficio?.rules)
-          ? config.defaults.beneficio.rules.map((rule) => ({
-              modalidad: String(rule.modalidad ?? "*"),
-              plantel: String(rule.plantel ?? "*"),
-              lineaNegocio: String(rule.lineaNegocio ?? "*"),
-              activo: typeof rule.activo === "boolean" ? rule.activo : false,
-              porcentaje: Number(rule.porcentaje ?? 0),
-              comentario: String(rule.comentario ?? ""),
-            }))
+          ? config.defaults.beneficio.rules.map((rule) => {
+              const rawPlantel = Array.isArray(rule.plantel)
+                ? rule.plantel
+                : typeof rule.plantel === "string"
+                  ? [rule.plantel]
+                  : [];
+              const normalizedPlantel = rawPlantel
+                .map((entry) => String(entry ?? "").trim())
+                .filter(Boolean);
+              return {
+                modalidad: String(rule.modalidad ?? "*"),
+                plantel: normalizedPlantel.length ? normalizedPlantel : ["*"],
+                lineaNegocio: String(rule.lineaNegocio ?? "*"),
+                activo: typeof rule.activo === "boolean" ? rule.activo : false,
+                porcentaje: Number(rule.porcentaje ?? 0),
+                comentario: String(rule.comentario ?? ""),
+              };
+            })
           : [],
       },
     },
@@ -236,10 +246,17 @@ export function resolveDefaultBenefit(
   let bestScore = -1;
   config.defaults.beneficio.rules.forEach((rule) => {
     const ruleModalidad = normalizeAny(rule.modalidad);
-    const rulePlantel = normalizeAny(rule.plantel);
+    const planteles = Array.isArray(rule.plantel)
+      ? rule.plantel
+      : typeof rule.plantel === "string"
+        ? [rule.plantel]
+        : [];
+    const plantelScore = planteles.reduce((score, entry) => {
+      const value = normalizeAny(String(entry ?? ""));
+      return Math.max(score, scoreMatch(value, normalizedPlantel));
+    }, -1);
     const ruleLinea = normalizeAny(rule.lineaNegocio);
     const modalidadScore = scoreMatch(ruleModalidad, normalizedModalidad);
-    const plantelScore = scoreMatch(rulePlantel, normalizedPlantel);
     const lineaScore = scoreMatch(ruleLinea, normalizedLinea);
     if (modalidadScore < 0 || plantelScore < 0 || lineaScore < 0) return;
     const total = modalidadScore + plantelScore + lineaScore;
