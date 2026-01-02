@@ -74,6 +74,11 @@ const nivelOptionsAll = [
   ...nivelOptions,
 ];
 
+const lineaOptionsAll = [
+  { value: "*", label: "Todas" },
+  ...nivelOptions,
+];
+
 const ADMIN_SLUGS = ["unidep", "utc", "ula"];
 const ADMIN_LAST_SLUG_KEY = "recalc_admin_last_slug";
 const ADMIN_DRAFT_PREFIX = "recalc_admin_draft_";
@@ -190,6 +195,19 @@ export default function AdminPage() {
   const [previewLinea, setPreviewLinea] = useState<Nivel | "*">("licenciatura");
   const [previewModalidad, setPreviewModalidad] = useState("presencial");
   const [previewPlantel, setPreviewPlantel] = useState("*");
+  const [availabilitySearch, setAvailabilitySearch] = useState("");
+  const [availabilityFilterPlantel, setAvailabilityFilterPlantel] =
+    useState("*");
+  const [availabilityFilterModalidad, setAvailabilityFilterModalidad] =
+    useState("*");
+  const [availabilityFilterLinea, setAvailabilityFilterLinea] = useState("*");
+  const [availabilityCollapsed, setAvailabilityCollapsed] = useState(true);
+  const [benefitSearch, setBenefitSearch] = useState("");
+  const [benefitFilterActivo, setBenefitFilterActivo] = useState("all");
+  const [benefitFilterPlantel, setBenefitFilterPlantel] = useState("*");
+  const [benefitFilterModalidad, setBenefitFilterModalidad] = useState("*");
+  const [benefitFilterLinea, setBenefitFilterLinea] = useState("*");
+  const [benefitCollapsed, setBenefitCollapsed] = useState(true);
   const [benefitPlantelOpen, setBenefitPlantelOpen] = useState<number | null>(
     null
   );
@@ -207,6 +225,33 @@ export default function AdminPage() {
       ),
     [config, previewLinea, previewModalidad, previewPlantel]
   );
+
+  const normalizeProgramaText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const resolveLineaNegocio = (programa: string) => {
+    const normalized = normalizeProgramaText(programa);
+    const saludTargets = [
+      "enfermeria",
+      "fisioterapia",
+      "psicologia",
+      "nutricion",
+    ];
+    if (saludTargets.some((target) => normalized.includes(target))) {
+      return "salud";
+    }
+    if (normalized.includes("bachiller")) {
+      return "preparatoria";
+    }
+    if (normalized.includes("maestr")) {
+      return "maestria";
+    }
+    return "licenciatura";
+  };
 
   useEffect(() => {
     if (benefitPlantelOpen === null) return;
@@ -540,9 +585,65 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
     return Array.from(map.values());
   }, [availabilityEntries, config.programAvailability]);
 
+  const availabilityPlantelOptions = useMemo(() => {
+    const planteles = new Set<string>();
+    availabilityMerged.forEach((entry) => {
+      const plantel = String(entry.plantel ?? "").trim();
+      if (plantel) planteles.add(plantel);
+    });
+    return Array.from(planteles).sort((a, b) => a.localeCompare(b, "es"));
+  }, [availabilityMerged]);
+
+  const availabilityFiltered = useMemo(() => {
+    const search = availabilitySearch.trim().toLowerCase();
+    return availabilityMerged.filter((entry) => {
+      if (availabilityFilterPlantel !== "*") {
+        if (String(entry.plantel ?? "").trim() !== availabilityFilterPlantel) {
+          return false;
+        }
+      }
+      if (availabilityFilterModalidad !== "*") {
+        if (String(entry.modalidad ?? "").trim() !== availabilityFilterModalidad) {
+          return false;
+        }
+      }
+      if (availabilityFilterLinea !== "*") {
+        const linea = resolveLineaNegocio(String(entry.programa ?? ""));
+        if (linea !== availabilityFilterLinea) return false;
+      }
+      if (search) {
+        const target = `${entry.programa ?? ""} ${entry.plantel ?? ""} ${
+          entry.modalidad ?? ""
+        }`.toLowerCase();
+        if (!target.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [
+    availabilityMerged,
+    availabilitySearch,
+    availabilityFilterPlantel,
+    availabilityFilterModalidad,
+    availabilityFilterLinea,
+  ]);
+
+  const availabilityOnlineCounts = useMemo(() => {
+    const lic = new Set<string>();
+    const mae = new Set<string>();
+    availabilityMerged.forEach((entry) => {
+      if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
+      const programa = String(entry.programa ?? "").trim();
+      if (!programa) return;
+      const linea = resolveLineaNegocio(programa);
+      if (linea === "licenciatura") lic.add(programa.toLowerCase());
+      if (linea === "maestria") mae.add(programa.toLowerCase());
+    });
+    return { lic: lic.size, mae: mae.size };
+  }, [availabilityMerged]);
+
   const availabilityByPlantel = useMemo(() => {
     const byPlantel = new Map<string, (AdminProgramAvailability & { source: string })[]>();
-    availabilityMerged.forEach((entry) => {
+    availabilityFiltered.forEach((entry) => {
       const plantelKey = String(entry.plantel ?? "").trim();
       if (!plantelKey) return;
       const list = byPlantel.get(plantelKey) ?? [];
@@ -556,7 +657,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       );
     });
     return byPlantel;
-  }, [availabilityMerged]);
+  }, [availabilityFiltered]);
 
   const availabilityPlantels = useMemo(() => {
     return Array.from(availabilityByPlantel.keys()).sort((a, b) =>
@@ -599,6 +700,40 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       ...prev,
       programAvailability: [],
     }));
+
+  const benefitRulesFiltered = useMemo(() => {
+    const search = benefitSearch.trim().toLowerCase();
+    return config.defaults.beneficio.rules.filter((rule) => {
+      if (benefitFilterActivo === "active" && !rule.activo) return false;
+      if (benefitFilterActivo === "inactive" && rule.activo) return false;
+      if (benefitFilterModalidad !== "*" && rule.modalidad !== benefitFilterModalidad) {
+        return false;
+      }
+      if (benefitFilterLinea !== "*" && rule.lineaNegocio !== benefitFilterLinea) {
+        return false;
+      }
+      if (benefitFilterPlantel !== "*") {
+        const planteles = normalizeBenefitPlanteles(rule.plantel);
+        if (!planteles.includes("*") && !planteles.includes(benefitFilterPlantel)) {
+          return false;
+        }
+      }
+      if (search) {
+        const target = `${rule.modalidad} ${rule.lineaNegocio} ${rule.porcentaje} ${
+          rule.comentario ?? ""
+        }`.toLowerCase();
+        if (!target.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [
+    config.defaults.beneficio.rules,
+    benefitSearch,
+    benefitFilterActivo,
+    benefitFilterModalidad,
+    benefitFilterLinea,
+    benefitFilterPlantel,
+  ]);
 
 
   const handleSave = async () => {
@@ -795,12 +930,81 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
               Descuentos adicionales por defecto
             </h2>
-              <p className="text-xs text-slate-400">
-                Define linea de negocio, modalidad, plantel y porcentaje del descuento.
-              </p>
+            <p className="text-xs text-slate-400">
+              Define linea de negocio, modalidad, plantel y porcentaje del descuento.
+            </p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr]">
+            <input
+              value={benefitSearch}
+              onChange={(event) => setBenefitSearch(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              placeholder="Buscar comentario o regla..."
+            />
+            <select
+              value={benefitFilterLinea}
+              onChange={(event) => setBenefitFilterLinea(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              {lineaOptionsAll.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={benefitFilterModalidad}
+              onChange={(event) => setBenefitFilterModalidad(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              {modalidadOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={benefitFilterPlantel}
+              onChange={(event) => setBenefitFilterPlantel(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              <option value="*">Todos los planteles</option>
+              {plantelOptions.map((plantel) => (
+                <option key={plantel} value={plantel}>
+                  {plantel}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <span>Estado:</span>
+              <select
+                value={benefitFilterActivo}
+                onChange={(event) => setBenefitFilterActivo(event.target.value)}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100"
+              >
+                <option value="all">Todos</option>
+                <option value="active">Activo</option>
+                <option value="inactive">Inactivo</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBenefitCollapsed((prev) => !prev)}
+              className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              {benefitCollapsed ? "Mostrar resultados" : "Ocultar resultados"}
+            </button>
           </div>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
+            {benefitCollapsed ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
+                Resultados ocultos. Usa el buscador o filtros y luego despliega.
+              </div>
+            ) : null}
+            {!benefitCollapsed && (
+              <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
               <span>Linea</span>
               <span>Modalidad</span>
               <span>Plantel</span>
@@ -808,8 +1012,10 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               <span>%</span>
               <span>Comentario</span>
               <span></span>
-            </div>
-            {config.defaults.beneficio.rules.map((rule, index) => (
+              </div>
+            )}
+            {!benefitCollapsed &&
+              benefitRulesFiltered.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
                 className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
@@ -1106,6 +1312,10 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   {new Date(availabilityUpdatedAt).toLocaleString("es-MX")}
                 </p>
               ) : null}
+              <p className="mt-1 text-[11px] text-slate-500">
+                Online: {availabilityOnlineCounts.lic} licenciaturas ·{" "}
+                {availabilityOnlineCounts.mae} maestrias
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1156,9 +1366,71 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               {availabilityError}
             </div>
           ) : null}
+          <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr]">
+            <input
+              value={availabilitySearch}
+              onChange={(event) => setAvailabilitySearch(event.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              placeholder="Buscar programa o plantel..."
+            />
+            <select
+              value={availabilityFilterLinea}
+              onChange={(event) =>
+                setAvailabilityFilterLinea(event.target.value)
+              }
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              {lineaOptionsAll.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={availabilityFilterModalidad}
+              onChange={(event) =>
+                setAvailabilityFilterModalidad(event.target.value)
+              }
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              {modalidadOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={availabilityFilterPlantel}
+              onChange={(event) =>
+                setAvailabilityFilterPlantel(event.target.value)
+              }
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+            >
+              <option value="*">Todos los planteles</option>
+              {availabilityPlantelOptions.map((plantel) => (
+                <option key={plantel} value={plantel}>
+                  {plantel}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+            <span>{availabilityFiltered.length} registros coinciden.</span>
+            <button
+              type="button"
+              onClick={() => setAvailabilityCollapsed((prev) => !prev)}
+              className="rounded-full border border-slate-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              {availabilityCollapsed ? "Mostrar resultados" : "Ocultar resultados"}
+            </button>
+          </div>
           {availabilityPlantels.length === 0 ? (
             <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
               Sin datos de disponibilidad cargados.
+            </div>
+          ) : availabilityCollapsed ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
+              Resultados ocultos. Usa filtros y despliega cuando necesites.
             </div>
           ) : (
             <div className="space-y-4">
