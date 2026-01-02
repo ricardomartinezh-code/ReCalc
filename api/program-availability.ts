@@ -468,6 +468,33 @@ const buildAvailability = (
   };
 };
 
+const pruneAvailabilityEntries = (entries: any[]) => {
+  const activeByProgram = new Map<string, boolean>();
+  const normalizeKey = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  const getKey = (entry: any) => {
+    const plantel = normalizeKey(String(entry?.plantel ?? ""));
+    const programa = normalizeKey(String(entry?.programa ?? ""));
+    return `${plantel}::${programa}`;
+  };
+  entries.forEach((entry) => {
+    const key = getKey(entry);
+    if (!key) return;
+    if (entry?.activo) {
+      activeByProgram.set(key, true);
+    }
+  });
+  return entries.filter((entry) => {
+    const key = getKey(entry);
+    if (!key) return false;
+    return activeByProgram.get(key);
+  });
+};
+
 const fetchAvailability = async () => {
   const token = await getAccessToken();
   const sheetNames = await fetchSheetNames(token);
@@ -528,7 +555,7 @@ const fetchAvailability = async () => {
     });
   }
 
-  return { availability, debug };
+  return { availability: pruneAvailabilityEntries(availability), debug };
 };
 
 const getAvailabilityCache = async (slug: string) => {
@@ -605,13 +632,16 @@ export default async function handler(req: any, res: any) {
 
     if ((!wantsRefresh || wantsCacheOnly) && cached?.payload && (cacheFresh || wantsCacheOnly)) {
       const payload = cached.payload as { availability?: any[]; debug?: any[] };
+      const availability = pruneAvailabilityEntries(
+        Array.isArray(payload.availability) ? payload.availability : []
+      );
       sendJson(
         res,
         200,
         wantsDebug
-          ? { availability: payload.availability ?? [], debug: payload.debug }
+          ? { availability, debug: payload.debug }
           : {
-              availability: payload.availability ?? [],
+              availability,
               updatedAt: cached.updatedAt?.toISOString() ?? null,
             }
       );
@@ -649,18 +679,21 @@ export default async function handler(req: any, res: any) {
     );
     if (cached?.payload && details.includes("(429)")) {
       const payload = cached.payload as { availability?: any[]; debug?: any[] };
+      const availability = pruneAvailabilityEntries(
+        Array.isArray(payload.availability) ? payload.availability : []
+      );
       sendJson(
         res,
         200,
         wantsDebug
           ? {
-              availability: payload.availability ?? [],
+              availability,
               debug: payload.debug,
               warning: "Cuota limitada; se uso cache reciente.",
               details,
             }
           : {
-              availability: payload.availability ?? [],
+              availability,
               updatedAt: cached.updatedAt?.toISOString() ?? null,
             }
       );
