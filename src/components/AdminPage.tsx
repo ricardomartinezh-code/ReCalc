@@ -190,6 +190,12 @@ export default function AdminPage() {
   const [previewLinea, setPreviewLinea] = useState<Nivel | "*">("licenciatura");
   const [previewModalidad, setPreviewModalidad] = useState("presencial");
   const [previewPlantel, setPreviewPlantel] = useState("*");
+  const [benefitPlantelOpen, setBenefitPlantelOpen] = useState<number | null>(
+    null
+  );
+  const [benefitPlantelQuery, setBenefitPlantelQuery] = useState<
+    Record<number, string>
+  >({});
 
   const previewRule = useMemo(
     () =>
@@ -201,6 +207,24 @@ export default function AdminPage() {
       ),
     [config, previewLinea, previewModalidad, previewPlantel]
   );
+
+  useEffect(() => {
+    if (benefitPlantelOpen === null) return;
+    const handlePointerDown = (event: MouseEvent | PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target) return;
+      const container = target.closest(
+        `[data-benefit-plantel-index="${benefitPlantelOpen}"]`
+      );
+      if (!container) {
+        setBenefitPlantelOpen(null);
+      }
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [benefitPlantelOpen]);
 
   const adjustmentFieldClass =
     "w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
@@ -832,42 +856,77 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
                     Plantel
                   </span>
-                <details className="relative">
-                  <summary className="cursor-pointer list-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100">
-                    {(() => {
-                      const selected = normalizeBenefitPlanteles(rule.plantel);
-                      if (selected.includes("*")) return "Todos los planteles";
-                      return `${selected.length} plantel${selected.length === 1 ? "" : "es"}`;
+                  <div
+                    className="relative"
+                    data-benefit-plantel-index={index}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setBenefitPlantelOpen((prev) =>
+                          prev === index ? null : index
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left text-xs text-slate-100"
+                    >
+                      {(() => {
+                        const selected = normalizeBenefitPlanteles(rule.plantel);
+                        if (selected.includes("*")) return "Todos los planteles";
+                        return `${selected.length} plantel${selected.length === 1 ? "" : "es"}`;
                       })()}
-                    </summary>
-                    <div className="absolute z-20 mt-1 w-full min-w-[220px] rounded-lg border border-slate-700 bg-slate-950/95 p-2 text-xs text-slate-200 shadow-xl">
-                      <label className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70">
+                    </button>
+                    {benefitPlantelOpen === index ? (
+                      <div className="absolute z-20 mt-1 w-full min-w-[220px] rounded-lg border border-slate-700 bg-slate-950/95 p-2 text-xs text-slate-200 shadow-xl">
                         <input
-                          type="checkbox"
-                          className="accent-emerald-500"
-                          checked={normalizeBenefitPlanteles(rule.plantel).includes("*")}
-                          onChange={() => toggleBenefitPlantel(index, "*")}
+                          type="text"
+                          value={benefitPlantelQuery[index] ?? ""}
+                          onChange={(event) =>
+                            setBenefitPlantelQuery((prev) => ({
+                              ...prev,
+                              [index]: event.target.value,
+                            }))
+                          }
+                          placeholder="Buscar plantel..."
+                          className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500"
                         />
-                        Todos los planteles
-                      </label>
-                      <div className="mt-2 max-h-40 overflow-y-auto border-t border-slate-800 pt-2 space-y-1">
-                        {plantelOptions.map((plantel) => (
-                          <label
-                            key={plantel}
-                            className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70"
-                          >
-                            <input
-                              type="checkbox"
-                              className="accent-emerald-500"
-                              checked={normalizeBenefitPlanteles(rule.plantel).includes(plantel)}
-                              onChange={() => toggleBenefitPlantel(index, plantel)}
-                            />
-                            {plantel}
-                          </label>
-                        ))}
+                        <label className="mt-2 flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70">
+                          <input
+                            type="checkbox"
+                            className="accent-emerald-500"
+                            checked={normalizeBenefitPlanteles(rule.plantel).includes("*")}
+                            onChange={() => toggleBenefitPlantel(index, "*")}
+                          />
+                          Todos los planteles
+                        </label>
+                        <div className="mt-2 max-h-40 overflow-y-auto border-t border-slate-800 pt-2 space-y-1">
+                          {plantelOptions
+                            .filter((plantel) =>
+                              plantel
+                                .toLowerCase()
+                                .includes(
+                                  (benefitPlantelQuery[index] ?? "")
+                                    .toLowerCase()
+                                    .trim()
+                                )
+                            )
+                            .map((plantel) => (
+                              <label
+                                key={plantel}
+                                className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-slate-800/70"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="accent-emerald-500"
+                                  checked={normalizeBenefitPlanteles(rule.plantel).includes(plantel)}
+                                  onChange={() => toggleBenefitPlantel(index, plantel)}
+                                />
+                                {plantel}
+                              </label>
+                            ))}
+                        </div>
                       </div>
-                    </div>
-                  </details>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
