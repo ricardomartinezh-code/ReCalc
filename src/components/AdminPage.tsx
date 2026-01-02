@@ -935,46 +935,60 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             </p>
           </div>
           <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr]">
-            <input
-              value={benefitSearch}
-              onChange={(event) => setBenefitSearch(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-              placeholder="Buscar comentario o regla..."
-            />
-            <select
-              value={benefitFilterLinea}
-              onChange={(event) => setBenefitFilterLinea(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              {lineaOptionsAll.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={benefitFilterModalidad}
-              onChange={(event) => setBenefitFilterModalidad(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              {modalidadOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={benefitFilterPlantel}
-              onChange={(event) => setBenefitFilterPlantel(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              <option value="*">Todos los planteles</option>
-              {plantelOptions.map((plantel) => (
-                <option key={plantel} value={plantel}>
-                  {plantel}
-                </option>
-              ))}
-            </select>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Buscar</span>
+              <input
+                value={benefitSearch}
+                onChange={(event) => setBenefitSearch(event.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                placeholder="Buscar comentario o regla..."
+              />
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Linea</span>
+              <select
+                value={benefitFilterLinea}
+                onChange={(event) => setBenefitFilterLinea(event.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {lineaOptionsAll.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Modalidad</span>
+              <select
+                value={benefitFilterModalidad}
+                onChange={(event) =>
+                  setBenefitFilterModalidad(event.target.value)
+                }
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {modalidadOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Plantel</span>
+              <select
+                value={benefitFilterPlantel}
+                onChange={(event) => setBenefitFilterPlantel(event.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                <option value="*">Todos los planteles</option>
+                {plantelOptions.map((plantel) => (
+                  <option key={plantel} value={plantel}>
+                    {plantel}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <div className="flex items-center gap-2">
@@ -1367,52 +1381,64 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             </div>
           ) : null}
           <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr]">
-            <input
-              value={availabilitySearch}
-              onChange={(event) => setAvailabilitySearch(event.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-              placeholder="Buscar programa o plantel..."
-            />
-            <select
-              value={availabilityFilterLinea}
-              onChange={(event) =>
-                setAvailabilityFilterLinea(event.target.value)
-              }
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              {lineaOptionsAll.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={availabilityFilterModalidad}
-              onChange={(event) =>
-                setAvailabilityFilterModalidad(event.target.value)
-              }
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              {modalidadOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={availabilityFilterPlantel}
-              onChange={(event) =>
-                setAvailabilityFilterPlantel(event.target.value)
-              }
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-            >
-              <option value="*">Todos los planteles</option>
-              {availabilityPlantelOptions.map((plantel) => (
-                <option key={plantel} value={plantel}>
-                  {plantel}
-                </option>
-              ))}
-            </select>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Buscar</span>
+              <input
+                value={availabilitySearch}
+                onChange={(event) => setAvailabilitySearch(event.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                placeholder="Buscar programa o plantel..."
+              />
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Linea</span>
+              <select
+                value={availabilityFilterLinea}
+                onChange={(event) =>
+                  setAvailabilityFilterLinea(event.target.value)
+                }
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {lineaOptionsAll.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Modalidad</span>
+              <select
+                value={availabilityFilterModalidad}
+                onChange={(event) =>
+                  setAvailabilityFilterModalidad(event.target.value)
+                }
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                {modalidadOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Plantel</span>
+              <select
+                value={availabilityFilterPlantel}
+                onChange={(event) =>
+                  setAvailabilityFilterPlantel(event.target.value)
+                }
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+              >
+                <option value="*">Todos los planteles</option>
+                {availabilityPlantelOptions.map((plantel) => (
+                  <option key={plantel} value={plantel}>
+                    {plantel}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span>{availabilityFiltered.length} registros coinciden.</span>
