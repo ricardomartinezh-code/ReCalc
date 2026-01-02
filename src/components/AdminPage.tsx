@@ -258,7 +258,7 @@ export default function AdminPage() {
     setAvailabilityError("");
     try {
       const response = await fetch(
-        `/api/program-availability?debug=1${mode === "refresh" ? "&refresh=1" : ""}&slug=${encodeURIComponent(
+        `/api/program-availability?debug=1${mode === "refresh" ? "&refresh=1" : "&cache=1"}&slug=${encodeURIComponent(
           activeSlug || "unidep"
         )}`
       );

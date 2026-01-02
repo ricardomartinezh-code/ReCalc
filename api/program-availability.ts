@@ -76,7 +76,8 @@ const resolveAvailabilityFromRow = (row: string[]) => {
 const buildOnlineAvailability = (
   rows: unknown[][],
   plantelName: string,
-  links: Map<number, string>
+  links: Map<number, string>,
+  hiddenRows: Set<number>
 ): { entries: any[]; debug: any } => {
   if (!rows.length) {
     return {
@@ -117,6 +118,7 @@ const buildOnlineAvailability = (
 
   boundaries.forEach((section) => {
     for (let i = section.start; i < section.end; i += 1) {
+      if (hiddenRows.has(i)) continue;
       const row = normalizedRows[i];
       if (!row.some((cell) => String(cell ?? "").trim())) continue;
       const programCell =
@@ -191,7 +193,7 @@ const extractCellLink = (cell: any) => {
 const fetchSheetLinks = async (token: string, sheetName: string) => {
   const range = encodeURIComponent(`${sheetName}!B:B`);
   const response = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?ranges=${range}&includeGridData=true&fields=sheets.data.rowData.values(formattedValue,hyperlink,textFormatRuns,userEnteredValue)`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?ranges=${range}&includeGridData=true&fields=sheets.data.rowData.values(formattedValue,hyperlink,textFormatRuns,userEnteredValue),sheets.data.rowMetadata(hiddenByUser,hiddenByFilter)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!response.ok) {
@@ -199,13 +201,20 @@ const fetchSheetLinks = async (token: string, sheetName: string) => {
   }
   const data = (await response.json()) as any;
   const rowData = data?.sheets?.[0]?.data?.[0]?.rowData ?? [];
+  const rowMetadata = data?.sheets?.[0]?.data?.[0]?.rowMetadata ?? [];
   const linkMap = new Map<number, string>();
+  const hiddenRows = new Set<number>();
   rowData.forEach((row: any, index: number) => {
     const cell = row?.values?.[0];
     const link = extractCellLink(cell);
     if (link) linkMap.set(index, link);
   });
-  return linkMap;
+  rowMetadata.forEach((meta: any, index: number) => {
+    if (meta?.hiddenByUser || meta?.hiddenByFilter) {
+      hiddenRows.add(index);
+    }
+  });
+  return { links: linkMap, hiddenRows };
 };
 
 const getAccessToken = async () => {
@@ -277,7 +286,8 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
 const buildAvailability = (
   rows: unknown[][],
   plantelName: string,
-  links: Map<number, string>
+  links: Map<number, string>,
+  hiddenRows: Set<number>
 ): { entries: any[]; debug: any } => {
   if (isIgnoredSheet(plantelName)) {
     return {
@@ -286,7 +296,7 @@ const buildAvailability = (
     };
   }
   if (normalizeText(plantelName).includes("online")) {
-    return buildOnlineAvailability(rows, plantelName, links);
+    return buildOnlineAvailability(rows, plantelName, links, hiddenRows);
   }
   if (!rows.length) {
     return {
@@ -389,7 +399,15 @@ const buildAvailability = (
       const escolarizadoRaw = row[escolarizadoCol];
       const ejecutivoRaw = row[ejecutivoCol];
       const realRowIndex = modalidadIndex + 1 + rowIndex;
+      if (hiddenRows.has(realRowIndex)) return acc;
       const planUrl = links.get(realRowIndex) ?? "";
+      const escolarizadoActivo =
+        escolarizadoCol >= 0 ? parseAvailability(escolarizadoRaw) : false;
+      const ejecutivoActivo =
+        ejecutivoCol >= 0 ? parseAvailability(ejecutivoRaw) : false;
+      if (!escolarizadoActivo && !ejecutivoActivo) {
+        return acc;
+      }
       if (escolarizadoCol >= 0) {
         const horarioEscolarizado =
           scheduleEscolarizadoFallback >= 0
@@ -402,7 +420,7 @@ const buildAvailability = (
           modalidad: "presencial",
           horario: horarioEscolarizado,
           planUrl,
-          activo: parseAvailability(escolarizadoRaw),
+          activo: escolarizadoActivo,
         });
       }
       if (ejecutivoCol >= 0) {
@@ -417,7 +435,7 @@ const buildAvailability = (
           modalidad: "mixta",
           horario: horarioEjecutivo,
           planUrl,
-          activo: parseAvailability(ejecutivoRaw),
+          activo: ejecutivoActivo,
         });
       }
       return acc;
@@ -455,20 +473,62 @@ const fetchAvailability = async () => {
   const sheetNames = await fetchSheetNames(token);
   const allRows = await Promise.all(
     sheetNames.map(async (sheetName) => {
-      const [rows, links] = await Promise.all([
+      const [rows, linkData] = await Promise.all([
         fetchSheetValues(token, sheetName),
         fetchSheetLinks(token, sheetName),
       ]);
-      return { sheetName, rows, links };
+      return { sheetName, rows, linkData };
     })
   );
-  const results = allRows.map(({ sheetName, rows, links }) =>
-    buildAvailability(rows, sheetName, links)
+  const results = allRows.map(({ sheetName, rows, linkData }) =>
+    buildAvailability(rows, sheetName, linkData.links, linkData.hiddenRows)
   );
-  return {
-    availability: results.flatMap((result) => result.entries),
-    debug: results.map((result) => result.debug),
-  };
+  const availability = results.flatMap((result) => result.entries);
+  const debug = results.map((result) => result.debug);
+
+  const normalizeKey = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const planUrlByProgram = new Map<string, string>();
+  availability.forEach((entry) => {
+    if (String(entry.modalidad ?? "").toLowerCase() === "online") return;
+    const planUrl = String(entry.planUrl ?? "").trim();
+    const programKey = normalizeKey(String(entry.programa ?? ""));
+    if (!planUrl || !programKey) return;
+    if (!planUrlByProgram.has(programKey)) {
+      planUrlByProgram.set(programKey, planUrl);
+    }
+  });
+
+  const missingOnlinePlans = new Set<string>();
+  availability.forEach((entry) => {
+    if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
+    if (String(entry.planUrl ?? "").trim()) return;
+    const programKey = normalizeKey(String(entry.programa ?? ""));
+    if (!programKey) return;
+    const fallback = planUrlByProgram.get(programKey);
+    if (fallback) {
+      entry.planUrl = fallback;
+    } else {
+      missingOnlinePlans.add(String(entry.programa ?? "").trim());
+    }
+  });
+
+  if (missingOnlinePlans.size) {
+    debug.push({
+      plantel: "online",
+      warnings: [
+        "Faltan planes de estudio para programas online.",
+        ...Array.from(missingOnlinePlans).sort((a, b) => a.localeCompare(b, "es")),
+      ],
+    });
+  }
+
+  return { availability, debug };
 };
 
 const getAvailabilityCache = async (slug: string) => {
@@ -497,6 +557,21 @@ const saveAvailabilityCache = async (slug: string, payload: any) => {
                   updated_at = EXCLUDED.updated_at
     RETURNING updated_at;
   `;
+  await sql`
+    INSERT INTO availability_cache_history (slug, payload, created_at)
+    VALUES (${slug}, ${payload}, NOW());
+  `;
+  await sql`
+    DELETE FROM availability_cache_history
+    WHERE slug = ${slug}
+      AND id NOT IN (
+        SELECT id
+        FROM availability_cache_history
+        WHERE slug = ${slug}
+        ORDER BY created_at DESC
+        LIMIT 3
+      );
+  `;
   const rows = Array.isArray(result) ? result : (result as any).rows ?? [];
   return rows[0]?.updated_at ? new Date(rows[0].updated_at) : new Date();
 };
@@ -517,6 +592,7 @@ export default async function handler(req: any, res: any) {
   const url = new URL(req.url ?? "", "http://localhost");
   const wantsDebug = url.searchParams.get("debug") === "1";
   const wantsRefresh = url.searchParams.get("refresh") === "1";
+  const wantsCacheOnly = url.searchParams.get("cache") === "1";
   const slug = String(url.searchParams.get("slug") ?? "unidep")
     .trim()
     .toLowerCase();
@@ -527,7 +603,7 @@ export default async function handler(req: any, res: any) {
       : Number.POSITIVE_INFINITY;
     const cacheFresh = cacheAge < CACHE_TTL_MS;
 
-    if (!wantsRefresh && cached?.payload && cacheFresh) {
+    if ((!wantsRefresh || wantsCacheOnly) && cached?.payload && (cacheFresh || wantsCacheOnly)) {
       const payload = cached.payload as { availability?: any[]; debug?: any[] };
       sendJson(
         res,
@@ -538,6 +614,16 @@ export default async function handler(req: any, res: any) {
               availability: payload.availability ?? [],
               updatedAt: cached.updatedAt?.toISOString() ?? null,
             }
+      );
+      return;
+    }
+    if (wantsCacheOnly) {
+      sendJson(
+        res,
+        404,
+        wantsDebug
+          ? { error: "No hay cache disponible para este slug." }
+          : { error: "No hay cache disponible para este slug." }
       );
       return;
     }
