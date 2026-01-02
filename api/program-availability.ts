@@ -360,15 +360,26 @@ const buildAvailability = (
   const ejecutivoCols = modalidadRow
     .map((cell, idx) => (isTruthyCell(cell, ["ejecutivo"]) ? idx : -1))
     .filter((idx) => idx >= 0);
-  let escolarizadoCol = escolarizadoCols[0] ?? -1;
-  let ejecutivoCol = ejecutivoCols[0] ?? -1;
-  if (escolarizadoCol < 0) escolarizadoCol = 2;
-  if (ejecutivoCol < 0) ejecutivoCol = 3;
 
   const headerRow = normalizedRows[headerIndex] ?? [];
   const horariosHeaderCol = headerRow.findIndex(
     (cell) => normalizeText(cell) === "horarios"
   );
+  const availabilityEscolarizadoCols =
+    horariosHeaderCol >= 0
+      ? escolarizadoCols.filter((idx) => idx < horariosHeaderCol)
+      : escolarizadoCols;
+  const availabilityEjecutivoCols =
+    horariosHeaderCol >= 0
+      ? ejecutivoCols.filter((idx) => idx < horariosHeaderCol)
+      : ejecutivoCols;
+
+  let escolarizadoCol =
+    availabilityEscolarizadoCols[0] ?? escolarizadoCols[0] ?? -1;
+  let ejecutivoCol =
+    availabilityEjecutivoCols[0] ?? ejecutivoCols[0] ?? -1;
+  if (escolarizadoCol < 0) escolarizadoCol = 2;
+  if (ejecutivoCol < 0) ejecutivoCol = 3;
   const scheduleEscolarizadoCol =
     horariosHeaderCol >= 0
       ? escolarizadoCols.find((idx) => idx > horariosHeaderCol) ?? -1
