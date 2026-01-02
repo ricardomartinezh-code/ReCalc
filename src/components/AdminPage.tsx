@@ -1639,7 +1639,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                 }
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
                               >
-                                Ocultar
+                                Eliminar
                               </button>
                               {isEditable || isOverride ? (
                                 <button
