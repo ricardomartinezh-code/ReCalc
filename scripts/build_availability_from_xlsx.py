@@ -335,7 +335,23 @@ def main():
             }
         )
 
-    payload = {"availability": availability, "debug": debug}
+    deduped = {}
+    non_online = []
+    for entry in availability:
+        if entry["modalidad"] != "online":
+            non_online.append(entry)
+            continue
+        key = f"{normalize_program_key(entry['programa'])}::online::{normalize_text(entry['plantel'])}"
+        current = deduped.get(key)
+        if not current:
+            deduped[key] = entry
+            continue
+        if not current.get("planUrl") and entry.get("planUrl"):
+            deduped[key] = entry
+            continue
+        if not current.get("horario") and entry.get("horario"):
+            deduped[key] = entry
+    payload = {"availability": non_online + list(deduped.values()), "debug": debug}
     OUTPUT_PATH.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote {len(availability)} entries to {OUTPUT_PATH}")
 

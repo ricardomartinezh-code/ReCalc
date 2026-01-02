@@ -682,7 +682,7 @@ const fetchAvailability = async () => {
 
   const existingOnline = new Set<string>();
   availability.forEach((entry) => {
-    if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;       
+    if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
     const key = normalizeProgramKey(String(entry.programa ?? ""));
     if (key) existingOnline.add(key);
   });
@@ -696,9 +696,38 @@ const fetchAvailability = async () => {
     }
   });
 
+  const dedupedOnline = new Map<string, any>();
+  availability.forEach((entry) => {
+    const modalidad = String(entry.modalidad ?? "").toLowerCase();
+    if (modalidad !== "online") return;
+    const programKey = normalizeProgramKey(String(entry.programa ?? ""));
+    const plantelKey = normalizeText(String(entry.plantel ?? ""));
+    if (!programKey || !plantelKey) return;
+    const key = `${programKey}::${modalidad}::${plantelKey}`;
+    const current = dedupedOnline.get(key);
+    if (!current) {
+      dedupedOnline.set(key, entry);
+      return;
+    }
+    const currentPlan = String(current.planUrl ?? "").trim();
+    const candidatePlan = String(entry.planUrl ?? "").trim();
+    if (!currentPlan && candidatePlan) {
+      dedupedOnline.set(key, entry);
+      return;
+    }
+    if (!current.horario && entry.horario) {
+      dedupedOnline.set(key, entry);
+    }
+  });
+
+  const nonOnline = availability.filter(
+    (entry) => String(entry.modalidad ?? "").toLowerCase() !== "online"
+  );
+  const dedupedAvailability = [...nonOnline, ...dedupedOnline.values()];
+
   onlineProgramKeys.forEach((programa, key) => {
     if (existingOnline.has(key)) return;
-    availability.push({
+    dedupedAvailability.push({
       id: `online-allowlist-${key}`,
       plantel: "Online",
       programa,
@@ -709,7 +738,7 @@ const fetchAvailability = async () => {
     });
   });
 
-  return { availability: pruneAvailabilityEntries(availability), debug };
+  return { availability: pruneAvailabilityEntries(dedupedAvailability), debug };
 };
 
 const getAvailabilityCache = async (slug: string) => {
