@@ -23,6 +23,16 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+const toTitleCase = (value: string) =>
+  value
+    .toLowerCase()
+    .split(" ")
+    .map((part) => {
+      if (!part) return part;
+      return part[0].toUpperCase() + part.slice(1);
+    })
+    .join(" ");
+
 const parseAvailability = (raw: unknown) => {
   if (raw === true) return true;
   if (raw === false) return false;
@@ -73,11 +83,16 @@ const resolveAvailabilityFromRow = (row: string[]) => {
   return true;
 };
 
+type SheetLinkData = {
+  linksByRow: Map<number, string>;
+  linksByCell: Map<string, string>;
+  hiddenRows: Set<number>;
+};
+
 const buildOnlineAvailability = (
   rows: unknown[][],
   plantelName: string,
-  links: Map<number, string>,
-  hiddenRows: Set<number>
+  linkData: SheetLinkData
 ): { entries: any[]; debug: any } => {
   if (!rows.length) {
     return {
@@ -89,59 +104,77 @@ const buildOnlineAvailability = (
     row.map((cell) => String(cell ?? ""))
   );
   const warnings: string[] = [];
-  const sectionLabels = [
-    "licenciatura online actual",
-    "licenciatura online nuevos programas",
-    "posgrados online",
-    "maestria online",
-  ];
-  const sectionRows = normalizedRows
-    .map((row, idx) => {
-      const label = row.find((cell) =>
-        sectionLabels.includes(normalizeText(cell))
-      );
-      return label ? { index: idx, label: normalizeText(label) } : null;
-    })
-    .filter(Boolean) as Array<{ index: number; label: string }>;
+  const headerMatches: Array<{
+    rowIndex: number;
+    colIndex: number;
+    label: string;
+  }> = [];
 
-  if (!sectionRows.length) {
+  normalizedRows.forEach((row, rowIndex) => {
+    row.forEach((cell, colIndex) => {
+      const normalized = normalizeText(cell);
+      if (!normalized) return;
+      const isOnlineHeader = normalized.includes("online");
+      if (!isOnlineHeader) return;
+      if (normalized.includes("licenciatura")) {
+        headerMatches.push({
+          rowIndex,
+          colIndex,
+          label: "licenciatura online",
+        });
+        return;
+      }
+      if (normalized.includes("posgrados") || normalized.includes("maestria")) {
+        headerMatches.push({
+          rowIndex,
+          colIndex,
+          label: "posgrados online",
+        });
+      }
+    });
+  });
+
+  if (!headerMatches.length) {
     warnings.push("No se encontraron encabezados de online.");
   }
 
   const entries: any[] = [];
-  const sortedSections = sectionRows.sort((a, b) => a.index - b.index);
-  const boundaries = sortedSections.map((section, idx) => ({
-    start: section.index + 1,
-    end: sortedSections[idx + 1]?.index ?? normalizedRows.length,
-    label: section.label,
-  }));
+  const sortedHeaders = headerMatches.sort(
+    (a, b) => a.rowIndex - b.rowIndex || a.colIndex - b.colIndex
+  );
 
-  boundaries.forEach((section) => {
-    for (let i = section.start; i < section.end; i += 1) {
-      if (hiddenRows.has(i)) continue;
-      const row = normalizedRows[i];
-      if (!row.some((cell) => String(cell ?? "").trim())) continue;
-      const programCell =
-        row.find((cell) => {
-          const normalized = normalizeText(cell);
-          if (!normalized) return false;
-          if (sectionLabels.includes(normalized)) return false;
-          if (normalized === "programa" || normalized === "programas") return false;
-          if (normalized === "oferta") return false;
-          return true;
-        }) ?? "";
-      const programa = String(programCell).trim();
+  const resolveLink = (rowIndex: number, colIndex: number) =>
+    linkData.linksByCell.get(`${rowIndex}:${colIndex}`) ??
+    linkData.linksByRow.get(rowIndex) ??
+    "";
+
+  sortedHeaders.forEach((header, idx) => {
+    const endRow =
+      sortedHeaders.find((next) => next.rowIndex > header.rowIndex)?.rowIndex ??
+      normalizedRows.length;
+    for (let i = header.rowIndex + 1; i < endRow; i += 1) {
+      if (linkData.hiddenRows.has(i)) continue;
+      const row = normalizedRows[i] ?? [];
+      const cell = row[header.colIndex] ?? "";
+      const programa = toTitleCase(String(cell ?? "").trim());
       if (!programa) continue;
-      const activo = true;
-      const planUrl = links.get(i) ?? "";
+      const normalized = normalizeText(programa);
+      if (normalized.includes("online") && normalized.includes("licenciatura")) {
+        continue;
+      }
+      if (normalized.includes("online") && normalized.includes("posgrados")) {
+        continue;
+      }
+      if (normalized === "programa" || normalized === "programas") continue;
+      const planUrl = resolveLink(i, header.colIndex);
       entries.push({
-        id: `sheet-${plantelName}-${section.label}-${i}-online`,
+        id: `sheet-${plantelName}-${header.label}-${i}-${header.colIndex}-online`,
         plantel: plantelName,
         programa,
         modalidad: "online",
         horario: "",
         planUrl,
-        activo,
+        activo: true,
       });
     }
   });
@@ -151,7 +184,11 @@ const buildOnlineAvailability = (
     debug: {
       plantel: plantelName,
       mode: "online",
-      sections: sortedSections,
+      sections: sortedHeaders.map((header) => ({
+        index: header.rowIndex,
+        label: header.label,
+        col: header.colIndex,
+      })),
       entries: entries.length,
       warnings,
       sample: entries.slice(0, 5).map((entry) => ({
@@ -191,7 +228,7 @@ const extractCellLink = (cell: any) => {
 };
 
 const fetchSheetLinks = async (token: string, sheetName: string) => {
-  const range = encodeURIComponent(`${sheetName}!B:B`);
+  const range = encodeURIComponent(`${sheetName}!A:Z`);
   const response = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?ranges=${range}&includeGridData=true&fields=sheets.data.rowData.values(formattedValue,hyperlink,textFormatRuns,userEnteredValue),sheets.data.rowMetadata(hiddenByUser,hiddenByFilter)`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -202,19 +239,26 @@ const fetchSheetLinks = async (token: string, sheetName: string) => {
   const data = (await response.json()) as any;
   const rowData = data?.sheets?.[0]?.data?.[0]?.rowData ?? [];
   const rowMetadata = data?.sheets?.[0]?.data?.[0]?.rowMetadata ?? [];
-  const linkMap = new Map<number, string>();
+  const linksByRow = new Map<number, string>();
+  const linksByCell = new Map<string, string>();
   const hiddenRows = new Set<number>();
   rowData.forEach((row: any, index: number) => {
-    const cell = row?.values?.[0];
-    const link = extractCellLink(cell);
-    if (link) linkMap.set(index, link);
+    const values = Array.isArray(row?.values) ? row.values : [];
+    values.forEach((cell: any, colIndex: number) => {
+      const link = extractCellLink(cell);
+      if (!link) return;
+      linksByCell.set(`${index}:${colIndex}`, link);
+      if (!linksByRow.has(index)) {
+        linksByRow.set(index, link);
+      }
+    });
   });
   rowMetadata.forEach((meta: any, index: number) => {
     if (meta?.hiddenByUser || meta?.hiddenByFilter) {
       hiddenRows.add(index);
     }
   });
-  return { links: linkMap, hiddenRows };
+  return { linksByRow, linksByCell, hiddenRows };
 };
 
 const getAccessToken = async () => {
@@ -286,8 +330,7 @@ const fetchSheetValues = async (token: string, sheetName: string) => {
 const buildAvailability = (
   rows: unknown[][],
   plantelName: string,
-  links: Map<number, string>,
-  hiddenRows: Set<number>
+  linkData: SheetLinkData
 ): { entries: any[]; debug: any } => {
   if (isIgnoredSheet(plantelName)) {
     return {
@@ -296,7 +339,7 @@ const buildAvailability = (
     };
   }
   if (normalizeText(plantelName).includes("online")) {
-    return buildOnlineAvailability(rows, plantelName, links, hiddenRows);
+    return buildOnlineAvailability(rows, plantelName, linkData);
   }
   if (!rows.length) {
     return {
@@ -402,7 +445,7 @@ const buildAvailability = (
   const entries = normalizedRows
     .slice(modalidadIndex + 1, endIndex)
     .reduce<any[]>((acc, row, rowIndex) => {
-      const programa = String(row[1] ?? row[0] ?? "").trim();
+      const programa = toTitleCase(String(row[1] ?? row[0] ?? "").trim());
       if (!programa) return acc;
       const programaNorm = normalizeText(programa);
       if (["modular", "longitudinal"].includes(programaNorm)) return acc;
@@ -410,8 +453,12 @@ const buildAvailability = (
       const escolarizadoRaw = row[escolarizadoCol];
       const ejecutivoRaw = row[ejecutivoCol];
       const realRowIndex = modalidadIndex + 1 + rowIndex;
-      if (hiddenRows.has(realRowIndex)) return acc;
-      const planUrl = links.get(realRowIndex) ?? "";
+      if (linkData.hiddenRows.has(realRowIndex)) return acc;
+      const programCol = row[1] ? 1 : 0;
+      const planUrl =
+        linkData.linksByCell.get(`${realRowIndex}:${programCol}`) ??
+        linkData.linksByRow.get(realRowIndex) ??
+        "";
       const escolarizadoActivo =
         escolarizadoCol >= 0 ? parseAvailability(escolarizadoRaw) : false;
       const ejecutivoActivo =
@@ -419,7 +466,7 @@ const buildAvailability = (
       if (!escolarizadoActivo && !ejecutivoActivo) {
         return acc;
       }
-      if (escolarizadoCol >= 0) {
+      if (escolarizadoCol >= 0 && escolarizadoActivo) {
         const horarioEscolarizado =
           scheduleEscolarizadoFallback >= 0
             ? String(row[scheduleEscolarizadoFallback] ?? "").trim()
@@ -434,7 +481,7 @@ const buildAvailability = (
           activo: escolarizadoActivo,
         });
       }
-      if (ejecutivoCol >= 0) {
+      if (ejecutivoCol >= 0 && ejecutivoActivo) {
         const horarioEjecutivo =
           scheduleEjecutivoFallback >= 0
             ? String(row[scheduleEjecutivoFallback] ?? "").trim()

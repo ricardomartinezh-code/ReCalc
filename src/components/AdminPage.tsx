@@ -439,6 +439,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       return { ...prev, programAvailability: next };
     });
 
+  const removeAvailabilityOverride = (entry: AdminProgramAvailability) =>
+    updateConfig((prev) => {
+      const next = prev.programAvailability.filter(
+        (item) => buildAvailabilityKey(item) !== buildAvailabilityKey(entry)
+      );
+      return { ...prev, programAvailability: next };
+    });
+
   const availabilityMerged = useMemo(() => {
     const map = new Map<
       string,
@@ -515,6 +523,12 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
           activo: true,
         },
       ],
+    }));
+
+  const clearAvailabilityOverrides = () =>
+    updateConfig((prev) => ({
+      ...prev,
+      programAvailability: [],
     }));
 
 
@@ -865,6 +879,18 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 }`}
               >
                 {availabilityLoading ? "Leyendo..." : "Actualizar lectura"}
+              </button>
+              <button
+                type="button"
+                onClick={clearAvailabilityOverrides}
+                disabled={availabilityLoading}
+                className={`rounded-xl border px-4 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                  availabilityLoading
+                    ? "cursor-not-allowed border-slate-800 text-slate-500"
+                    : "border-rose-500/60 text-rose-200 hover:border-rose-300 hover:text-rose-100"
+                }`}
+              >
+                Limpiar overrides
               </button>
               {availabilityFetchedAt ? (
                 <span className="text-xs text-slate-400">
