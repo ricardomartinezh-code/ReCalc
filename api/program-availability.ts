@@ -153,42 +153,63 @@ const buildOnlineAvailability = (
   const sortedHeaders = headerMatches.sort(
     (a, b) => a.rowIndex - b.rowIndex || a.colIndex - b.colIndex
   );
+  const licHeaders = sortedHeaders.filter(
+    (header) => header.label === "licenciatura online"
+  );
+  const posgradoHeaders = sortedHeaders.filter(
+    (header) => header.label === "posgrados online"
+  );
+  const posgradoStartRow = posgradoHeaders.length
+    ? Math.min(...posgradoHeaders.map((header) => header.rowIndex))
+    : null;
 
   const resolveLink = (rowIndex: number, colIndex: number) =>
     linkData.linksByCell.get(`${rowIndex}:${colIndex}`) ??
     linkData.linksByRow.get(rowIndex) ??
     "";
 
-  sortedHeaders.forEach((header, idx) => {
-    const endRow =
-      sortedHeaders.find((next) => next.rowIndex > header.rowIndex)?.rowIndex ??
-      normalizedRows.length;
-    for (let i = header.rowIndex + 1; i < endRow; i += 1) {
-      if (linkData.hiddenRows.has(i)) continue;
-      const row = normalizedRows[i] ?? [];
-      const cell = row[header.colIndex] ?? "";
-      const programa = toTitleCase(String(cell ?? "").trim());
-      if (!programa) continue;
-      const normalized = normalizeText(programa);
-      if (normalized.includes("online") && normalized.includes("licenciatura")) {
-        continue;
+  const parseHeaders = (
+    headers: Array<{ rowIndex: number; colIndex: number; label: string }>,
+    endRowOverride?: number | null
+  ) => {
+    headers.forEach((header) => {
+      const nextHeaderRow =
+        sortedHeaders.find((next) => next.rowIndex > header.rowIndex)?.rowIndex ??
+        normalizedRows.length;
+      const endRow =
+        typeof endRowOverride === "number"
+          ? Math.min(endRowOverride, nextHeaderRow)
+          : nextHeaderRow;
+      for (let i = header.rowIndex + 1; i < endRow; i += 1) {
+        if (linkData.hiddenRows.has(i)) continue;
+        const row = normalizedRows[i] ?? [];
+        const cell = row[header.colIndex] ?? "";
+        const programa = toTitleCase(String(cell ?? "").trim());
+        if (!programa) continue;
+        const normalized = normalizeText(programa);
+        if (normalized.includes("online") && normalized.includes("licenciatura")) {
+          continue;
+        }
+        if (normalized.includes("online") && normalized.includes("posgrados")) {
+          continue;
+        }
+        if (normalized === "programa" || normalized === "programas") continue;
+        const planUrl = resolveLink(i, header.colIndex);
+        entries.push({
+          id: `sheet-${plantelName}-${header.label}-${i}-${header.colIndex}-online`,
+          plantel: plantelName,
+          programa,
+          modalidad: "online",
+          horario: "",
+          planUrl,
+          activo: true,
+        });
       }
-      if (normalized.includes("online") && normalized.includes("posgrados")) {
-        continue;
-      }
-      if (normalized === "programa" || normalized === "programas") continue;
-      const planUrl = resolveLink(i, header.colIndex);
-      entries.push({
-        id: `sheet-${plantelName}-${header.label}-${i}-${header.colIndex}-online`,
-        plantel: plantelName,
-        programa,
-        modalidad: "online",
-        horario: "",
-        planUrl,
-        activo: true,
-      });
-    }
-  });
+    });
+  };
+
+  parseHeaders(licHeaders, posgradoStartRow);
+  parseHeaders(posgradoHeaders);
 
   return {
     entries,
