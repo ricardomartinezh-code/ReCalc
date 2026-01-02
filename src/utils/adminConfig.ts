@@ -3,6 +3,7 @@ export type AdminBenefitRule = {
   plantel: string;
   activo: boolean;
   porcentaje: number;
+  comentario?: string;
 };
 
 export type AdminPriceOverride = {
@@ -115,7 +116,13 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
         ...fallback.defaults.beneficio,
         ...(config.defaults?.beneficio ?? {}),
         rules: Array.isArray(config.defaults?.beneficio?.rules)
-          ? config.defaults.beneficio.rules
+          ? config.defaults.beneficio.rules.map((rule) => ({
+              modalidad: String(rule.modalidad ?? "*"),
+              plantel: String(rule.plantel ?? "*"),
+              activo: typeof rule.activo === "boolean" ? rule.activo : false,
+              porcentaje: Number(rule.porcentaje ?? 0),
+              comentario: String(rule.comentario ?? ""),
+            }))
           : [],
       },
     },

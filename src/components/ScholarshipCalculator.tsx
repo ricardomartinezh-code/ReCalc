@@ -804,18 +804,27 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     };
   }, [university]);
 
+  const benefitRule = useMemo(() => {
+    if (!modalidad || isRegreso) return null;
+    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
+    return resolveDefaultBenefit(adminConfig, modalidad, plantelKey || "");
+  }, [adminConfig, modalidad, plantel, isRegreso]);
+
+  const benefitComment = useMemo(() => {
+    if (!benefitRule?.comentario) return "";
+    return benefitRule.comentario.trim();
+  }, [benefitRule]);
+
   useEffect(() => {
     if (!modalidad || isRegreso) return;
-    const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
-    const rule = resolveDefaultBenefit(adminConfig, modalidad, plantelKey || "");
-    if (!rule) {
+    if (!benefitRule) {
       setBeneficioActivo(false);
       setBeneficioPorcentaje(10);
       return;
     }
-    setBeneficioActivo(rule.activo);
-    setBeneficioPorcentaje(rule.porcentaje);
-  }, [adminConfig, modalidad, plantel, isRegreso]);
+    setBeneficioActivo(benefitRule.activo);
+    setBeneficioPorcentaje(benefitRule.porcentaje);
+  }, [benefitRule, modalidad, isRegreso]);
 
   useEffect(() => {
     if (!nivel || !modalidad || !plan) {
@@ -2019,6 +2028,11 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
                 <p className="mt-1 text-sm text-slate-200">
                   Descuento extra sobre colegiatura. No aplica a costos adicionales.
                 </p>
+                {beneficioActivo && benefitComment ? (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-400/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
+                    {benefitComment}
+                  </div>
+                ) : null}
               </div>
               <button
                 type="button"

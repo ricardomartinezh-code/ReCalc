@@ -734,7 +734,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             {config.defaults.beneficio.rules.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.3fr_.8fr_.8fr_auto]"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.3fr_.8fr_.8fr_1.6fr_auto]"
               >
                 <select
                   value={rule.modalidad}
@@ -788,6 +788,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
                   placeholder="%"
                 />
+                <input
+                  value={rule.comentario ?? ""}
+                  onChange={(event) =>
+                    updateBenefitRule(index, { comentario: event.target.value })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  placeholder="Comentario (opcional)"
+                />
                 <button
                   type="button"
                   onClick={() =>
@@ -826,6 +834,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                           plantel: "*",
                           activo: false,
                           porcentaje: 10,
+                          comentario: "",
                         },
                       ],
                     },
