@@ -468,32 +468,14 @@ const buildAvailability = (
   };
 };
 
-const pruneAvailabilityEntries = (entries: any[]) => {
-  const activeByProgram = new Map<string, boolean>();
-  const normalizeKey = (value: string) =>
-    value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-  const getKey = (entry: any) => {
-    const plantel = normalizeKey(String(entry?.plantel ?? ""));
-    const programa = normalizeKey(String(entry?.programa ?? ""));
-    return `${plantel}::${programa}`;
-  };
-  entries.forEach((entry) => {
-    const key = getKey(entry);
-    if (!key) return;
-    if (entry?.activo) {
-      activeByProgram.set(key, true);
-    }
+const pruneAvailabilityEntries = (entries: any[]) =>
+  entries.filter((entry) => {
+    if (!entry?.activo) return false;
+    const plantel = String(entry?.plantel ?? "").trim();
+    const programa = String(entry?.programa ?? "").trim();
+    const modalidad = String(entry?.modalidad ?? "").trim();
+    return Boolean(plantel && programa && modalidad);
   });
-  return entries.filter((entry) => {
-    const key = getKey(entry);
-    if (!key) return false;
-    return activeByProgram.get(key);
-  });
-};
 
 const fetchAvailability = async () => {
   const token = await getAccessToken();
