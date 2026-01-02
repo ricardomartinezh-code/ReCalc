@@ -1603,7 +1603,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                   : "border-rose-400/50 text-rose-200"
                               }`}
                             >
-                              {entry.activo ? "Disponible" : "No disponible"}
+                              {entry.activo ? "Visible" : "Oculto"}
                             </span>
                           </div>
                         ))}
@@ -1683,7 +1683,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                     })
                                   }
                                 />
-                                Disponible
+                                Visible en UI
                               </label>
                               <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
                                 {isOverride ? "override" : entry.source}
