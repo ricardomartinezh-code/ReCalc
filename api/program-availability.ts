@@ -23,6 +23,17 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
 
+const normalizeProgramKey = (value: string) =>
+  normalizeText(value)
+    .replace(/^licenciatura\s+en\s+/, "")
+    .replace(/^maestria\s+en\s+/, "")
+    .replace(/^ingenieria\s+en\s+/, "")
+    .replace(/^ingenieria\s+/, "")
+    .replace(/^licenciatura\s+/, "")
+    .replace(/^maestria\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const toTitleCase = (value: string) =>
   value
     .toLowerCase()
@@ -553,18 +564,11 @@ const fetchAvailability = async () => {
   const availability = results.flatMap((result) => result.entries);
   const debug = results.map((result) => result.debug);
 
-  const normalizeKey = (value: string) =>
-    value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-
   const planUrlByProgram = new Map<string, string>();
   availability.forEach((entry) => {
     if (String(entry.modalidad ?? "").toLowerCase() === "online") return;
     const planUrl = String(entry.planUrl ?? "").trim();
-    const programKey = normalizeKey(String(entry.programa ?? ""));
+    const programKey = normalizeProgramKey(String(entry.programa ?? ""));
     if (!planUrl || !programKey) return;
     if (!planUrlByProgram.has(programKey)) {
       planUrlByProgram.set(programKey, planUrl);
@@ -575,7 +579,7 @@ const fetchAvailability = async () => {
   availability.forEach((entry) => {
     if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
     if (String(entry.planUrl ?? "").trim()) return;
-    const programKey = normalizeKey(String(entry.programa ?? ""));
+    const programKey = normalizeProgramKey(String(entry.programa ?? ""));
     if (!programKey) return;
     const fallback = planUrlByProgram.get(programKey);
     if (fallback) {
@@ -594,6 +598,95 @@ const fetchAvailability = async () => {
       ],
     });
   }
+
+  const onlineProgramAllowlist = [
+    "Licenciatura en Administración de Empresas",
+    "Licenciatura en Administración de Empresas Turísticas",
+    "Licenciatura en Administración de Tecnologías de la Información",
+    "Licenciatura en Contaduría Pública",
+    "Licenciatura en Ciencias de la Comunicación",
+    "Licenciatura en Comercio Internacional",
+    "Licenciatura en Mercadotecnia",
+    "Licenciatura en Derecho",
+    "Licenciatura en Diseño Gráfico",
+    "Licenciatura en Arquitectura",
+    "Licenciatura en Pedagogía",
+    "Ingeniería Industrial y de Sistemas",
+    "Ingeniería en Manufactura y Robótica",
+    "Ingeniería en Sistemas Computacionales",
+    "Licenciatura en Relaciones Internacionales",
+    "Licenciatura en Negocios Internacionales",
+    "Licenciatura en Economía y Finanzas",
+    "Licenciatura en Administración Financiera",
+    "Licenciatura en Administración de Recursos Humanos",
+    "Ingeniería Industrial y Administración",
+    "Ingeniería en Software y Redes",
+    "Ingeniería en Logística",
+    "Licenciatura en Seguridad Pública",
+    "Licenciatura en Criminología",
+    "Maestría en Administración de Negocios",
+    "Maestría en Administración Financiera",
+    "Maestría en Mercadotecnia",
+    "Maestría en Gestión de Talento Humano",
+    "Maestría en Gestión de Proyectos",
+    "Maestría en Derecho Constitucional y Amparo",
+    "Maestría en Derecho Corporativo",
+    "Maestría en Derecho Fiscal y Administrativo",
+    "Maestría en Derecho Laboral",
+    "Maestría en Derecho Procesal",
+    "Maestría en Derecho y Juicios Orales",
+    "Maestría en Educación y Docencia",
+    "Maestría en Gestión Educativa",
+    "Maestría en Administración de Servicios de Salud",
+    "Maestría en Administración de Negocios y Mercadotecnia",
+    "Maestría en Finanzas",
+    "Maestría en Administración Pública",
+    "Maestría en Diseño Digital",
+    "Maestría en Diseño Sostenible y Arquitectura Verde",
+    "Maestría en Diseño Estratégico e Innovación",
+    "Maestría en Robótica y Automatización",
+    "Maestría en Inteligencia Artificial",
+    "Maestría en Energías Renovables",
+    "Maestría en Interacción y Experiencia del Usuario",
+    "Maestría en Logística y Cadena de Suministro",
+  ];
+
+  const onlineProgramKeys = new Map<string, string>();
+  onlineProgramAllowlist.forEach((programa) => {
+    const key = normalizeProgramKey(programa);
+    if (key) {
+      onlineProgramKeys.set(key, toTitleCase(programa));
+    }
+  });
+
+  const existingOnline = new Set<string>();
+  availability.forEach((entry) => {
+    if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;       
+    const key = normalizeProgramKey(String(entry.programa ?? ""));
+    if (key) existingOnline.add(key);
+  });
+
+  availability.forEach((entry) => {
+    if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
+    const key = normalizeProgramKey(String(entry.programa ?? ""));
+    const standardized = onlineProgramKeys.get(key);
+    if (standardized) {
+      entry.programa = standardized;
+    }
+  });
+
+  onlineProgramKeys.forEach((programa, key) => {
+    if (existingOnline.has(key)) return;
+    availability.push({
+      id: `online-allowlist-${key}`,
+      plantel: "Online",
+      programa,
+      modalidad: "online",
+      horario: "",
+      planUrl: planUrlByProgram.get(key) ?? "",
+      activo: true,
+    });
+  });
 
   return { availability: pruneAvailabilityEntries(availability), debug };
 };

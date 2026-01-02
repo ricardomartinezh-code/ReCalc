@@ -523,6 +523,33 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     AdminProgramAvailability[]
   >([]);
 
+  const normalizeProgramaText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const resolveLineaNegocio = (programa: string) => {
+    const normalized = normalizeProgramaText(programa);
+    const saludTargets = [
+      "enfermeria",
+      "fisioterapia",
+      "psicologia",
+      "nutricion",
+    ];
+    if (saludTargets.some((target) => normalized.includes(target))) {
+      return { key: "salud", label: "Salud" };
+    }
+    if (normalized.includes("bachiller")) {
+      return { key: "preparatoria", label: "Bachillerato" };
+    }
+    if (normalized.includes("maestr")) {
+      return { key: "maestria", label: "Maestría" };
+    }
+    return { key: "licenciatura", label: "Licenciatura" };
+  };
+
   const handleLogout = () => {
     clearStoredSession();
     window.location.assign("/");
@@ -625,6 +652,28 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return filtradas.sort((a, b) => orden.indexOf(a) - orden.indexOf(b));
   }, [nivel]);
 
+  const availabilityMerged = useMemo(() => {
+    const map = new Map<string, AdminProgramAvailability>();
+    const buildKey = (entry: AdminProgramAvailability) => {
+      const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
+      const programaKey = String(entry.programa ?? "").trim().toLowerCase();
+      const modalidadKey = String(entry.modalidad ?? "").trim().toLowerCase();
+      if (!plantelKey || !programaKey || !modalidadKey) return "";
+      return `${plantelKey}::${programaKey}::${modalidadKey}`;
+    };
+    availabilityRemote.forEach((entry) => {
+      const key = buildKey(entry);
+      if (!key) return;
+      map.set(key, entry);
+    });
+    adminConfig.programAvailability.forEach((entry) => {
+      const key = buildKey(entry);
+      if (!key) return;
+      map.set(key, entry);
+    });
+    return Array.from(map.values());
+  }, [availabilityRemote, adminConfig.programAvailability]);
+
   const planesDisponibles = useMemo(() => {
     if (!nivel || !modalidad) return [];
     const set = new Set<number>();
@@ -636,6 +685,24 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const plantelesDisponibles = useMemo(() => {
     if (!requierePlantel) {
       return [];
+    }
+    if (nivel === "preparatoria") {
+      const fromAvailability = availabilityMerged
+        .filter((entry) => {
+          if (String(entry.modalidad ?? "").toLowerCase() === "online") {
+            return false;
+          }
+          const programa = String(entry.programa ?? "").trim();
+          if (!programa) return false;
+          return resolveLineaNegocio(programa).key === "preparatoria";
+        })
+        .map((entry) => String(entry.plantel ?? "").trim())
+        .filter((entry) => entry && entry.toLowerCase() !== "online");
+      if (fromAvailability.length > 0) {
+        return Array.from(new Set(fromAvailability)).sort((a, b) =>
+          a.localeCompare(b, "es")
+        );
+      }
     }
 
     const key =
@@ -1298,58 +1365,8 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     [ajustesAplicables]
   );
 
-  const availabilityMerged = useMemo(() => {
-    const map = new Map<string, AdminProgramAvailability>();
-    const buildKey = (entry: AdminProgramAvailability) => {
-      const plantelKey = String(entry.plantel ?? "").trim().toLowerCase();
-      const programaKey = String(entry.programa ?? "").trim().toLowerCase();
-      const modalidadKey = String(entry.modalidad ?? "").trim().toLowerCase();
-      if (!plantelKey || !programaKey || !modalidadKey) return "";
-      return `${plantelKey}::${programaKey}::${modalidadKey}`;
-    };
-    availabilityRemote.forEach((entry) => {
-      const key = buildKey(entry);
-      if (!key) return;
-      map.set(key, entry);
-    });
-    adminConfig.programAvailability.forEach((entry) => {
-      const key = buildKey(entry);
-      if (!key) return;
-      map.set(key, entry);
-    });
-    return Array.from(map.values());
-  }, [availabilityRemote, adminConfig.programAvailability]);
-
-
   const plantelDisponibilidadKey =
     modalidad === "online" ? "ONLINE" : plantel;
-
-  const normalizeProgramaText = (value: string) =>
-    value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-
-  const resolveLineaNegocio = (programa: string) => {
-    const normalized = normalizeProgramaText(programa);
-    const saludTargets = [
-      "enfermeria",
-      "fisioterapia",
-      "psicologia",
-      "nutricion",
-    ];
-    if (saludTargets.some((target) => normalized.includes(target))) {
-      return { key: "salud", label: "Salud" };
-    }
-    if (normalized.includes("bachiller")) {
-      return { key: "preparatoria", label: "Bachillerato" };
-    }
-    if (normalized.includes("maestr")) {
-      return { key: "maestria", label: "Maestría" };
-    }
-    return { key: "licenciatura", label: "Licenciatura" };
-  };
 
   const programasDisponibles = useMemo(() => {
     if (!nivel) return [];
@@ -1379,7 +1396,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [adminConfig, availabilityMerged, nivel, plantelDisponibilidadKey]);
 
   const disponibilidadDetalle = useMemo(() => {
-    if (nivel !== "licenciatura") return null;
+    if (!nivel) return null;
     const plantelKey = plantelDisponibilidadKey;
     if (!plantelKey || !programaAcademico) return null;
     const normalized = programaAcademico.trim().toLowerCase();
