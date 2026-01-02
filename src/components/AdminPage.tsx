@@ -731,7 +731,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               </p>
           </div>
           <div className="space-y-3">
-            <div className="hidden md:grid md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+            <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
               <span>Linea</span>
               <span>Modalidad</span>
               <span>Plantel</span>
@@ -745,81 +745,111 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
                 className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
               >
-                <select
-                  value={rule.lineaNegocio ?? "*"}
-                  onChange={(event) =>
-                    updateBenefitRule(index, {
-                      lineaNegocio: event.target.value,
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  {nivelOptionsAll.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={rule.modalidad}
-                  onChange={(event) =>
-                    updateBenefitRule(index, { modalidad: event.target.value })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  {modalidadOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={rule.plantel}
-                  onChange={(event) =>
-                    updateBenefitRule(index, { plantel: event.target.value })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="*">Todos los planteles</option>
-                  {plantelOptions.map((plantel) => (
-                    <option key={plantel} value={plantel}>
-                      {plantel}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={rule.activo ? "si" : "no"}
-                  onChange={(event) =>
-                    updateBenefitRule(index, {
-                      activo: event.target.value === "si",
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                >
-                  <option value="si">Activo</option>
-                  <option value="no">Inactivo</option>
-                </select>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={rule.porcentaje}
-                  onChange={(event) =>
-                    updateBenefitRule(index, {
-                      porcentaje: Number(event.target.value || 0),
-                    })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="%"
-                />
-                <input
-                  value={rule.comentario ?? ""}
-                  onChange={(event) =>
-                    updateBenefitRule(index, { comentario: event.target.value })
-                  }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-                  placeholder="Comentario (opcional)"
-                />
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Linea
+                  </span>
+                  <select
+                    value={rule.lineaNegocio ?? "*"}
+                    onChange={(event) =>
+                      updateBenefitRule(index, {
+                        lineaNegocio: event.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    {nivelOptionsAll.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Modalidad
+                  </span>
+                  <select
+                    value={rule.modalidad}
+                    onChange={(event) =>
+                      updateBenefitRule(index, { modalidad: event.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    {modalidadOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Plantel
+                  </span>
+                  <select
+                    value={rule.plantel}
+                    onChange={(event) =>
+                      updateBenefitRule(index, { plantel: event.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    <option value="*">Todos los planteles</option>
+                    {plantelOptions.map((plantel) => (
+                      <option key={plantel} value={plantel}>
+                        {plantel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Estado
+                  </span>
+                  <select
+                    value={rule.activo ? "si" : "no"}
+                    onChange={(event) =>
+                      updateBenefitRule(index, {
+                        activo: event.target.value === "si",
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    <option value="si">Activo</option>
+                    <option value="no">Inactivo</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    %
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={rule.porcentaje}
+                    onChange={(event) =>
+                      updateBenefitRule(index, {
+                        porcentaje: Number(event.target.value || 0),
+                      })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    placeholder="%"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Comentario
+                  </span>
+                  <input
+                    value={rule.comentario ?? ""}
+                    onChange={(event) =>
+                      updateBenefitRule(index, { comentario: event.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    placeholder="Comentario (opcional)"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() =>

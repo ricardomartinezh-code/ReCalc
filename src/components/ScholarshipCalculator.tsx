@@ -1325,7 +1325,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     modalidad === "online" ? "ONLINE" : plantel;
 
   const programasDisponibles = useMemo(() => {
-    if (nivel !== "licenciatura") return [];
+    if (!nivel) return [];
     const plantelKey = plantelDisponibilidadKey;
     if (!plantelKey) return [];
     const entries = resolveProgramAvailability(
@@ -1333,8 +1333,18 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
       { plantel: plantelKey },
       availabilityMerged
     );
+    const filtered = entries.filter((entry) => {
+      const programa = String(entry.programa ?? "").trim();
+      if (!programa) return false;
+      const linea = resolveLineaNegocio(programa).key;
+      if (nivel === "licenciatura") return linea === "licenciatura";
+      if (nivel === "salud") return linea === "salud";
+      if (nivel === "preparatoria") return linea === "preparatoria";
+      if (nivel === "maestria") return linea === "maestria";
+      return true;
+    });
     const unique = new Set(
-      entries
+      filtered
         .map((entry) => entry.programa?.trim())
         .filter((entry): entry is string => Boolean(entry))
     );
