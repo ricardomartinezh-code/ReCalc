@@ -548,7 +548,7 @@ const fetchAvailability = async () => {
     })
   );
   const results = allRows.map(({ sheetName, rows, linkData }) =>
-    buildAvailability(rows, sheetName, linkData.links, linkData.hiddenRows)
+    buildAvailability(rows, sheetName, linkData)
   );
   const availability = results.flatMap((result) => result.entries);
   const debug = results.map((result) => result.debug);
