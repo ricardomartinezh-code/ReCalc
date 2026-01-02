@@ -731,10 +731,19 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               </p>
           </div>
           <div className="space-y-3">
+            <div className="hidden md:grid md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              <span>Linea</span>
+              <span>Modalidad</span>
+              <span>Plantel</span>
+              <span>Estado</span>
+              <span>%</span>
+              <span>Comentario</span>
+              <span></span>
+            </div>
             {config.defaults.beneficio.rules.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
               >
                 <select
                   value={rule.lineaNegocio ?? "*"}
