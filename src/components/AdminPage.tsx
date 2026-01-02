@@ -940,13 +940,43 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Descuentos adicionales por defecto
-            </h2>
-            <p className="text-xs text-slate-400">
-              Define linea de negocio, modalidad, plantel y porcentaje del descuento.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Descuentos adicionales por defecto
+              </h2>
+              <p className="text-xs text-slate-400">
+                Define linea de negocio, modalidad, plantel y porcentaje del descuento.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig((prev) => ({
+                  ...prev,
+                  defaults: {
+                    ...prev.defaults,
+                    beneficio: {
+                      ...prev.defaults.beneficio,
+                      rules: [
+                        ...prev.defaults.beneficio.rules,
+                        {
+                          lineaNegocio: "*",
+                          modalidad: "*",
+                          plantel: ["*"],
+                          activo: false,
+                          porcentaje: 10,
+                          comentario: "",
+                        },
+                      ],
+                    },
+                  },
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar regla
+            </button>
           </div>
           <div className="grid gap-2 md:grid-cols-[2fr_1fr_1fr_1fr]">
             <label className="space-y-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
@@ -1232,34 +1262,6 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </button>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={() =>
-                updateConfig((prev) => ({
-                  ...prev,
-                  defaults: {
-                    ...prev.defaults,
-                    beneficio: {
-                      ...prev.defaults.beneficio,
-                      rules: [
-                        ...prev.defaults.beneficio.rules,
-                        {
-                          lineaNegocio: "*",
-                          modalidad: "*",
-                          plantel: ["*"],
-                          activo: false,
-                          porcentaje: 10,
-                          comentario: "",
-                        },
-                      ],
-                    },
-                  },
-                }))
-              }
-              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
-            >
-              Agregar regla
-            </button>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-200">
             <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
@@ -1663,13 +1665,36 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Correcciones de materias (Regresos)
-            </h2>
-            <p className="text-xs text-slate-400">
-              Overrides por materias inscritas. Se aplican sobre los precios base.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Correcciones de materias (Regresos)
+              </h2>
+              <p className="text-xs text-slate-400">
+                Overrides por materias inscritas. Se aplican sobre los precios base.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                updateConfig((prev) => ({
+                  ...prev,
+                  materiaOverrides: [
+                    ...prev.materiaOverrides,
+                    {
+                      programa: "regreso",
+                      modalidad: "*",
+                      plantel: "*",
+                      materias: 1,
+                      precio: 0,
+                    },
+                  ],
+                }))
+              }
+              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+            >
+              Agregar correccion de materias
+            </button>
           </div>
           <div className="space-y-3">
             {(config.materiaOverrides ?? []).map((override, index) => (
@@ -1759,38 +1784,47 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </button>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Anadir bloque
+              </h2>
+              <p className="text-xs text-slate-400">
+                Agrega tarjetas opcionales que pueden afectar la UI y/o el calculo.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() =>
                 updateConfig((prev) => ({
                   ...prev,
-                  materiaOverrides: [
-                    ...prev.materiaOverrides,
+                  adjustments: [
+                    ...prev.adjustments,
                     {
-                      programa: "regreso",
+                      id: buildId(),
+                      titulo: "Ajuste adicional",
+                      descripcion: "",
+                      programa: "*",
+                      nivel: "*",
                       modalidad: "*",
+                      plan: "*",
                       plantel: "*",
-                      materias: 1,
-                      precio: 0,
+                      activo: true,
+                      aplica: "ui",
+                      tipo: "monto",
+                      valor: 0,
                     },
                   ],
                 }))
               }
               className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
             >
-              Agregar correccion de materias
+              Agregar bloque
             </button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Ajustes y beneficios adicionales
-            </h2>
-            <p className="text-xs text-slate-400">
-              Agrega tarjetas opcionales que pueden afectar la UI y/o el calculo.
-            </p>
           </div>
           <div className="space-y-3">
             {(config.adjustments ?? []).map((adjustment, index) => (
@@ -1940,45 +1974,41 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </button>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Correcciones rapidas de precio
+              </h2>
+              <p className="text-xs text-slate-400">
+                Sobrescribe precio lista para combinaciones especificas.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() =>
                 updateConfig((prev) => ({
                   ...prev,
-                  adjustments: [
-                    ...prev.adjustments,
+                  priceOverrides: [
+                    ...prev.priceOverrides,
                     {
-                      id: buildId(),
-                      titulo: "Ajuste adicional",
-                      descripcion: "",
-                      programa: "*",
-                      nivel: "*",
-                      modalidad: "*",
-                      plan: "*",
+                      programa: "nuevo",
+                      nivel: "licenciatura",
+                      modalidad: "presencial",
+                      plan: 1,
                       plantel: "*",
-                      activo: true,
-                      aplica: "ui",
-                      tipo: "monto",
-                      valor: 0,
+                      precioLista: 0,
                     },
                   ],
                 }))
               }
               className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
             >
-              Agregar ajuste
+              Agregar correccion
             </button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Correcciones rapidas de precio
-            </h2>
-            <p className="text-xs text-slate-400">
-              Sobrescribe precio lista para combinaciones especificas.
-            </p>
           </div>
           <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_.7fr_1.3fr_1fr_auto] gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
             <span>Programa</span>
@@ -2092,39 +2122,39 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </button>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
+                Botones de acceso directo
+              </h2>
+              <p className="text-xs text-slate-400">
+                Crea enlaces directos para compartir o abrir rutas externas.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() =>
                 updateConfig((prev) => ({
                   ...prev,
-                  priceOverrides: [
-                    ...prev.priceOverrides,
+                  shortcuts: [
+                    ...prev.shortcuts,
                     {
-                      programa: "nuevo",
-                      nivel: "licenciatura",
-                      modalidad: "presencial",
-                      plan: 1,
-                      plantel: "*",
-                      precioLista: 0,
+                      id: buildId(),
+                      label: "Acceso rapido",
+                      url: "",
+                      programas: ["nuevo", "regreso", "academia"],
                     },
                   ],
                 }))
               }
               className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
             >
-              Agregar correccion
+              Agregar acceso directo
             </button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
-              Botones de acceso directo
-            </h2>
-            <p className="text-xs text-slate-400">
-              Crea enlaces directos para compartir o abrir rutas externas.
-            </p>
           </div>
           <div className="space-y-3">
             {config.shortcuts.map((shortcut, index) => {
@@ -2199,26 +2229,6 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </div>
               );
             })}
-            <button
-              type="button"
-              onClick={() =>
-                updateConfig((prev) => ({
-                  ...prev,
-                  shortcuts: [
-                    ...prev.shortcuts,
-                    {
-                      id: buildId(),
-                      label: "Acceso rapido",
-                      url: "",
-                      programas: ["nuevo", "regreso", "academia"],
-                    },
-                  ],
-                }))
-              }
-              className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
-            >
-              Agregar acceso directo
-            </button>
           </div>
         </section>
       </div>

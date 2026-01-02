@@ -89,9 +89,10 @@ const emptyConfig = (): AdminConfig => ({
   adjustments: [],
 });
 
-const normalizeValue = (value: string) => value.trim().toLowerCase();
+const normalizeValue = (value: string | null | undefined) =>
+  String(value ?? "").trim().toLowerCase();
 
-const normalizeAny = (value: string) => {
+const normalizeAny = (value: string | null | undefined) => {
   const normalized = normalizeValue(value);
   return normalized === "todos" ? "*" : normalized;
 };
