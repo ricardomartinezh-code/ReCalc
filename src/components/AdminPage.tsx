@@ -584,6 +584,10 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
     config.programAvailability.forEach((entry) => {
       const key = buildAvailabilityKey(entry);
       if (!key) return;
+      if (entry.activo === false) {
+        map.delete(key);
+        return;
+      }
       const existing = map.get(key);
       map.set(key, {
         ...existing,
@@ -1630,7 +1634,9 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                               </span>
                               <button
                                 type="button"
-                                onClick={() => removeAvailabilityOverride(entry)}
+                                onClick={() =>
+                                  upsertAvailabilityOverride(entry, { activo: false })
+                                }
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
                               >
                                 Ocultar

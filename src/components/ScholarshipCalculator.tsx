@@ -669,6 +669,10 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     adminConfig.programAvailability.forEach((entry) => {
       const key = buildKey(entry);
       if (!key) return;
+      if (entry.activo === false) {
+        map.delete(key);
+        return;
+      }
       map.set(key, entry);
     });
     return Array.from(map.values());
