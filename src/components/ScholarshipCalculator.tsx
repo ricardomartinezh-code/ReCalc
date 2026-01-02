@@ -1324,6 +1324,33 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   const plantelDisponibilidadKey =
     modalidad === "online" ? "ONLINE" : plantel;
 
+  const normalizeProgramaText = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const resolveLineaNegocio = (programa: string) => {
+    const normalized = normalizeProgramaText(programa);
+    const saludTargets = [
+      "enfermeria",
+      "fisioterapia",
+      "psicologia",
+      "nutricion",
+    ];
+    if (saludTargets.some((target) => normalized.includes(target))) {
+      return { key: "salud", label: "Salud" };
+    }
+    if (normalized.includes("bachiller")) {
+      return { key: "preparatoria", label: "Bachillerato" };
+    }
+    if (normalized.includes("maestr")) {
+      return { key: "maestria", label: "Maestría" };
+    }
+    return { key: "licenciatura", label: "Licenciatura" };
+  };
+
   const programasDisponibles = useMemo(() => {
     if (!nivel) return [];
     const plantelKey = plantelDisponibilidadKey;
@@ -1401,33 +1428,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     programaAcademico,
   ]);
 
-
-  const normalizeProgramaText = (value: string) =>
-    value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
-
-  const resolveLineaNegocio = (programa: string) => {
-    const normalized = normalizeProgramaText(programa);
-    const saludTargets = [
-      "enfermeria",
-      "fisioterapia",
-      "psicologia",
-      "nutricion",
-    ];
-    if (saludTargets.some((target) => normalized.includes(target))) {
-      return { key: "salud", label: "Salud" };
-    }
-    if (normalized.includes("bachiller")) {
-      return { key: "preparatoria", label: "Bachillerato" };
-    }
-    if (normalized.includes("maestr")) {
-      return { key: "maestria", label: "Maestría" };
-    }
-    return { key: "licenciatura", label: "Licenciatura" };
-  };
   const lineaNegocioPrograma = useMemo(() => {
     if (!programaAcademico) return null;
     return resolveLineaNegocio(programaAcademico);
