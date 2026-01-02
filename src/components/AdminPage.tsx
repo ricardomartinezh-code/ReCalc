@@ -571,6 +571,60 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
       return { ...prev, programAvailability: next };
     });
 
+  const handleDeleteAvailability = async (entry: AdminProgramAvailability) => {
+    if (!session || !activeSlug) return;
+    if (typeof window !== "undefined") {
+      const ok = window.confirm(
+        "Esto elimina el programa del cache en BD. Â¿Continuar?"
+      );
+      if (!ok) return;
+    }
+    setAvailabilityLoading(true);
+    setAvailabilityError("");
+    try {
+      const response = await fetch("/api/admin/availability-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: activeSlug,
+          email: session.email,
+          entry: {
+            plantel: entry.plantel,
+            programa: entry.programa,
+            modalidad: entry.modalidad,
+          },
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        availability?: AdminProgramAvailability[];
+        updatedAt?: string | null;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(data?.error || "No fue posible eliminar del cache.");
+      }
+      setAvailabilityEntries(
+        Array.isArray(data.availability) ? data.availability : []
+      );
+      setAvailabilityUpdatedAt(data.updatedAt ?? "");
+      setAvailabilityFetchedAt(new Date().toLocaleString("es-MX"));
+      updateConfig((prev) => ({
+        ...prev,
+        programAvailability: prev.programAvailability.filter(
+          (item) => buildAvailabilityKey(item) !== buildAvailabilityKey(entry)
+        ),
+      }));
+    } catch (err) {
+      setAvailabilityError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible eliminar del cache."
+      );
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
   const availabilityMerged = useMemo(() => {
     const map = new Map<
       string,
@@ -1636,9 +1690,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                               </span>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  upsertAvailabilityOverride(entry, { activo: false })
-                                }
+                                onClick={() => handleDeleteAvailability(entry)}
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
                               >
                                 Eliminar
