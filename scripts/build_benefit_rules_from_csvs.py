@@ -22,10 +22,16 @@ def normalize_text(value: str) -> str:
 def parse_percent(value: str | None) -> int | None:
     if value is None:
         return None
-    match = re.search(r"\d+(\.\d+)?", str(value))
+    text = str(value)
+    if "%" not in text:
+        return None
+    match = re.search(r"\d+(\.\d+)?", text)
     if not match:
         return None
-    return int(float(match.group(0)))
+    amount = int(float(match.group(0)))
+    if amount > 100:
+        return None
+    return amount
 
 
 def normalize_modalidad(value: str | None) -> str:
@@ -114,17 +120,15 @@ def build_rules():
                 comentario=normalize_comment(lic_apply),
             )
 
-        salud_apply = row[8] if len(row) > 8 else ""
-        salud_modalidad = row[9] if len(row) > 9 else ""
-        salud_percent = row[10] if len(row) > 10 else ""
-        if should_apply(salud_apply):
+        salud_percent = row[9] if len(row) > 9 else ""
+        if parse_percent(salud_percent) is not None:
             add_rule(
                 rules,
                 linea="salud",
                 plantel=plantel,
-                modalidad=normalize_modalidad(salud_modalidad),
+                modalidad="*",
                 porcentaje=parse_percent(salud_percent),
-                comentario=normalize_comment(salud_apply),
+                comentario="",
             )
 
     for row in load_csv(LIC_ONLINE_PATH):
@@ -134,7 +138,7 @@ def build_rules():
         online_apply = row[12] if len(row) > 12 else ""
         online_modalidad = row[13] if len(row) > 13 else ""
         online_percent = row[14] if len(row) > 14 else ""
-        if should_apply(online_apply):
+        if should_apply(online_apply) and parse_percent(online_percent) is not None:
             add_rule(
                 rules,
                 linea="licenciatura",
@@ -157,7 +161,7 @@ def build_rules():
             plan = "9"
         if len(row) > 4 and str(row[4]).strip():
             plan = "6"
-        if should_apply(bach_apply):
+        if should_apply(bach_apply) and parse_percent(bach_percent) is not None:
             add_rule(
                 rules,
                 linea="preparatoria",

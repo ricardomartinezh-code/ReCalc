@@ -19,8 +19,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 613,
-      "comentario": "$4,085"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -30,8 +30,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 626,
-      "comentario": "$4,170"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -52,8 +52,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 695,
-      "comentario": "$4,635"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -74,8 +74,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 746,
-      "comentario": "$4,970"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -96,8 +96,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 695,
-      "comentario": "$4,635"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -118,8 +118,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 746,
-      "comentario": "$4,970"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -140,8 +140,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 613,
-      "comentario": "$4,085"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -162,8 +162,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 613,
-      "comentario": "$4,085"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -173,8 +173,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -184,8 +184,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -206,8 +206,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -228,8 +228,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -239,8 +239,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -250,8 +250,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -261,8 +261,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -283,8 +283,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -305,8 +305,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -316,8 +316,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -327,8 +327,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -349,8 +349,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 746,
-      "comentario": "$4,970"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -360,8 +360,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "salud",
@@ -371,8 +371,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 643,
-      "comentario": "$4,285"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -393,8 +393,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
@@ -415,8 +415,8 @@
       "modalidad": "*",
       "plan": "*",
       "activo": true,
-      "porcentaje": 689,
-      "comentario": "$4,590"
+      "porcentaje": 15,
+      "comentario": ""
     },
     {
       "lineaNegocio": "licenciatura",
