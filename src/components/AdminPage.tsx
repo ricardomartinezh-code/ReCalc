@@ -1311,7 +1311,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       },
                     }))
                   }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                  className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                 >
                   Quitar
                 </button>
@@ -1630,7 +1630,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteAvailability(entry)}
-                                className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                                className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                               >
                                 Eliminar
                               </button>
@@ -1638,7 +1638,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                 <button
                                   type="button"
                                   onClick={() => removeAvailabilityOverride(entry)}
-                                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition"
+                                  className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-slate-400 hover:text-slate-100 transition md:w-auto"
                                 >
                                   Quitar override
                                 </button>
