@@ -2,6 +2,7 @@ export type AdminBenefitRule = {
   modalidad: string;
   plantel: string[] | string;
   lineaNegocio: string;
+  plan: string;
   activo: boolean;
   porcentaje: number;
   comentario?: string;
@@ -131,6 +132,7 @@ const normalizeConfig = (config?: AdminConfig | null): AdminConfig => {
                 modalidad: String(rule.modalidad ?? "*"),
                 plantel: normalizedPlantel.length ? normalizedPlantel : ["*"],
                 lineaNegocio: String(rule.lineaNegocio ?? "*"),
+                plan: String(rule.plan ?? "*"),
                 activo: typeof rule.activo === "boolean" ? rule.activo : false,
                 porcentaje: Number(rule.porcentaje ?? 0),
                 comentario: String(rule.comentario ?? ""),
@@ -237,12 +239,14 @@ export function resolveDefaultBenefit(
   config: AdminConfig,
   modalidad: string,
   plantel: string,
-  lineaNegocio: string
+  lineaNegocio: string,
+  plan: number
 ) {
   if (!config.enabled) return null;
   const normalizedModalidad = normalizeValue(modalidad);
   const normalizedPlantel = normalizeValue(plantel);
   const normalizedLinea = normalizeValue(lineaNegocio);
+  const targetPlan = Number(plan);
   let best: AdminBenefitRule | null = null;
   let bestScore = -1;
   config.defaults.beneficio.rules.forEach((rule) => {
@@ -259,8 +263,10 @@ export function resolveDefaultBenefit(
     const ruleLinea = normalizeAny(rule.lineaNegocio);
     const modalidadScore = scoreMatch(ruleModalidad, normalizedModalidad);
     const lineaScore = scoreMatch(ruleLinea, normalizedLinea);
-    if (modalidadScore < 0 || plantelScore < 0 || lineaScore < 0) return;
-    const total = modalidadScore + plantelScore + lineaScore;
+    const planScore = scoreMatch(normalizeAny(rule.plan), String(targetPlan));
+    if (modalidadScore < 0 || plantelScore < 0 || lineaScore < 0 || planScore < 0)
+      return;
+    const total = modalidadScore + plantelScore + lineaScore + planScore;
     if (total > bestScore) {
       bestScore = total;
       best = rule;

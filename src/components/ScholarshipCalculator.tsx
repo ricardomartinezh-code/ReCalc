@@ -791,7 +791,6 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     return Math.round(total * 100) / 100;
   }, [extrasActivos, extrasDisponibles, extrasSeleccionados, isProgramaExtras]);
 
-  const beneficiosDisponibles = [10, 15, 20, 25, 30];
 
   const mostrarSelectorExtrasPlantel =
     isAcademia && extrasCatalogo.hasVariaciones;
@@ -876,16 +875,17 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [university]);
 
   const benefitRule = useMemo(() => {
-    if (!modalidad || isRegreso) return null;
+    if (!modalidad || !plan || isRegreso) return null;
     const plantelKey = modalidad === "online" ? "ONLINE" : plantel;
     const lineaNegocio = nivel || "*";
     return resolveDefaultBenefit(
       adminConfig,
       modalidad,
       plantelKey || "",
-      lineaNegocio
+      lineaNegocio,
+      Number(plan)
     );
-  }, [adminConfig, modalidad, plantel, nivel, isRegreso]);
+  }, [adminConfig, modalidad, plan, plantel, nivel, isRegreso]);
 
   const benefitComment = useMemo(() => {
     if (!benefitRule?.comentario) return "";
@@ -893,7 +893,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
   }, [benefitRule]);
 
   useEffect(() => {
-    if (!modalidad || isRegreso) return;
+    if (!modalidad || !plan || isRegreso) return;
     if (!benefitRule) {
       setBeneficioActivo(false);
       setBeneficioPorcentaje(10);
@@ -901,7 +901,7 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
     }
     setBeneficioActivo(benefitRule.activo);
     setBeneficioPorcentaje(benefitRule.porcentaje);
-  }, [benefitRule, modalidad, isRegreso]);
+  }, [benefitRule, modalidad, plan, isRegreso]);
 
   useEffect(() => {
     if (!nivel || !modalidad || !plan) {
@@ -2057,65 +2057,34 @@ const ScholarshipCalculator: React.FC<ScholarshipCalculatorProps> = ({
 
         {!isRegreso && (
           <section className="rounded-2xl border border-slate-800/70 bg-slate-950/30 p-4 md:p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                  Beneficios adicionales
-                </p>
-                <p className="mt-1 text-sm text-slate-200">
-                  Descuento extra sobre colegiatura. No aplica a costos adicionales.
-                </p>
-                {beneficioActivo && benefitComment ? (
-                  <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-amber-400/50 bg-amber-400/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
-                    {benefitComment}
-                  </div>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setBeneficioActivo((prev) => !prev);
-                  setResultadoMonto(null);
-                  setResultadoPorcentaje(null);
-                }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full border transition ${
-                  beneficioActivo
-                    ? accent === "violet"
-                      ? "border-violet-300/60 bg-violet-500/80"
-                      : accent === "amber"
-                        ? "border-amber-300/60 bg-amber-500/80"
-                        : "border-emerald-300/60 bg-emerald-500/80"
-                    : "border-slate-600 bg-slate-800/70"
-                }`}
-                aria-pressed={beneficioActivo}
-              >
-                <span
-                  className={`inline-block h-5 w-5 transform rounded-full bg-slate-50 shadow transition ${
-                    beneficioActivo ? "translate-x-5" : "translate-x-1"
-                  }`}
-                />
-              </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+                Beneficios adicionales
+              </p>
+              <p className="mt-1 text-sm text-slate-200">
+                Descuento extra sobre colegiatura. No aplica a costos adicionales.
+              </p>
             </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <SearchableSelect
-                id="beneficio"
-                openId={openSelectId}
-                setOpenId={setOpenSelectId}
-                label="Porcentaje extra"
-                options={beneficiosDisponibles.map((b) => `${b}%`)}
-                value={beneficioActivo ? `${beneficioPorcentaje}%` : ""}
-                onChange={(val) => {
-                  const num = Number(val.replace("%", "").trim());
-                  setBeneficioPorcentaje(Number.isNaN(num) ? 10 : num);
-                  setResultadoMonto(null);
-                  setResultadoPorcentaje(null);
-                  setError("");
-                }}
-                placeholder="Selecciona porcentaje"
-                disabled={!beneficioActivo}
-                accent={accent}
-              />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {benefitRule && beneficioActivo ? (
+                <>
+                  <span className="rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-100">
+                    Beneficio activo
+                  </span>
+                  <span className="text-xs text-slate-100">
+                    {beneficioPorcentaje}% adicional
+                  </span>
+                  {benefitComment ? (
+                    <span className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-2 py-1 text-[11px] text-amber-100">
+                      {benefitComment}
+                    </span>
+                  ) : null}
+                </>
+              ) : (
+                <span className="text-xs text-slate-400">
+                  Sin beneficio adicional para esta combinacion.
+                </span>
+              )}
             </div>
           </section>
         )}

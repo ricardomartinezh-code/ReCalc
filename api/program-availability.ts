@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { GoogleAuth, OAuth2Client } from "google-auth-library";
 import { sendJson, setCors } from "../server/auth/response.js";
 import { getSql } from "../server/auth/db.js";
@@ -13,8 +16,16 @@ const OAUTH_REDIRECT_URL = process.env.GOOGLE_OAUTH_REDIRECT_URL?.trim() ?? "";
 const OAUTH_REFRESH_TOKEN =
   process.env.GOOGLE_SHEETS_OAUTH_REFRESH_TOKEN?.trim() ?? "";
 const CACHE_TTL_MS = 600_000;
-
 let cache: { timestamp: number; data: any[] } | null = null;
+const planUrlCache: { loaded: boolean; map: Map<string, string> } = {
+  loaded: false,
+  map: new Map(),
+};
+
+const resolvePlanUrlPath = () => {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  return path.join(__dirname, "..", "scripts", "programs_plan_urls.csv");
+};
 
 const normalizeText = (value: string) =>
   value
@@ -56,10 +67,24 @@ const parseAvailability = (raw: unknown) => {
       return true;
     }
   }
-  if ("si" === normalized || "true" === normalized || "1" === normalized || "disponible" === normalized || "activo" === normalized || "verdadero" === normalized) {
+  if (
+    "si" === normalized ||
+    "true" === normalized ||
+    "1" === normalized ||
+    "disponible" === normalized ||
+    "activo" === normalized ||
+    "verdadero" === normalized
+  ) {
     return true;
   }
-  if ("no" === normalized || "false" === normalized || "0" === normalized || "no disponible" === normalized || "inactivo" === normalized || "falso" === normalized) {
+  if (
+    "no" === normalized ||
+    "false" === normalized ||
+    "0" === normalized ||
+    "no disponible" === normalized ||
+    "inactivo" === normalized ||
+    "falso" === normalized
+  ) {
     return false;
   }
   return false;
@@ -233,9 +258,6 @@ const buildOnlineAvailability = (
   };
 };
 
-
-
-
 const parseHyperlinkFormula = (formula: string) => {
   const match = formula.match(/HYPERLINK\("([^"]+)"[;,]/i);
   return match ? match[1] : "";
@@ -291,6 +313,29 @@ const fetchSheetLinks = async (token: string, sheetName: string) => {
     }
   });
   return { linksByRow, linksByCell, hiddenRows };
+};
+
+const loadPlanUrlMap = async () => {
+  if (planUrlCache.loaded) return planUrlCache.map;
+  planUrlCache.loaded = true;
+  const planMap = planUrlCache.map;
+  try {
+    const raw = await fs.readFile(resolvePlanUrlPath(), "utf8");
+    raw.split(/\r?\n/).forEach((line, index) => {
+      if (!line.trim()) return;
+      if (index === 0 && line.toLowerCase().includes("programa")) return;
+      const [programa, planUrl] = line.split(/,(.+)/);
+      const programKey = normalizeProgramKey(String(programa ?? ""));
+      const url = String(planUrl ?? "").trim();
+      if (!programKey || !url) return;
+      if (!planMap.has(programKey)) {
+        planMap.set(programKey, url);
+      }
+    });
+  } catch (err) {
+    // Ignore missing file for serverless builds
+  }
+  return planMap;
 };
 
 const getAccessToken = async () => {
@@ -451,8 +496,7 @@ const buildAvailability = (
 
   let escolarizadoCol =
     availabilityEscolarizadoCols[0] ?? escolarizadoCols[0] ?? -1;
-  let ejecutivoCol =
-    availabilityEjecutivoCols[0] ?? ejecutivoCols[0] ?? -1;
+  let ejecutivoCol = availabilityEjecutivoCols[0] ?? ejecutivoCols[0] ?? -1;
   if (escolarizadoCol < 0) escolarizadoCol = 2;
   if (ejecutivoCol < 0) ejecutivoCol = 3;
   const scheduleEscolarizadoCol =
@@ -597,6 +641,7 @@ const fetchAvailability = async () => {
   });
 
   const missingOnlinePlans = new Set<string>();
+  const planUrlCsvMap = await loadPlanUrlMap();
   availability.forEach((entry) => {
     if (String(entry.modalidad ?? "").toLowerCase() !== "online") return;
     if (String(entry.planUrl ?? "").trim()) return;
@@ -605,9 +650,14 @@ const fetchAvailability = async () => {
     const fallback = planUrlByProgram.get(programKey);
     if (fallback) {
       entry.planUrl = fallback;
-    } else {
-      missingOnlinePlans.add(String(entry.programa ?? "").trim());
+      return;
     }
+    const csvFallback = planUrlCsvMap.get(programKey);
+    if (csvFallback) {
+      entry.planUrl = csvFallback;
+      return;
+    }
+    missingOnlinePlans.add(String(entry.programa ?? "").trim());
   });
 
   if (missingOnlinePlans.size) {
@@ -621,55 +671,55 @@ const fetchAvailability = async () => {
   }
 
   const onlineProgramAllowlist = [
-    "Licenciatura en AdministraciÃ³n de Empresas",
-    "Licenciatura en AdministraciÃ³n de Empresas TurÃ­sticas",
-    "Licenciatura en AdministraciÃ³n de TecnologÃ­as de la InformaciÃ³n",
-    "Licenciatura en ContadurÃ­a PÃºblica",
-    "Licenciatura en Ciencias de la ComunicaciÃ³n",
+    "Licenciatura en Administración de Empresas",
+    "Licenciatura en Administración de Empresas Turísticas",
+    "Licenciatura en Administración de Tecnologías de la Información",
+    "Licenciatura en Contaduría Pública",
+    "Licenciatura en Ciencias de la Comunicación",
     "Licenciatura en Comercio Internacional",
     "Licenciatura en Mercadotecnia",
     "Licenciatura en Derecho",
-    "Licenciatura en DiseÃ±o GrÃ¡fico",
+    "Licenciatura en Diseño Gráfico",
     "Licenciatura en Arquitectura",
-    "Licenciatura en PedagogÃ­a",
-    "IngenierÃ­a Industrial y de Sistemas",
-    "IngenierÃ­a en Manufactura y RobÃ³tica",
-    "IngenierÃ­a en Sistemas Computacionales",
+    "Licenciatura en Pedagogía",
+    "Ingeniería Industrial y de Sistemas",
+    "Ingeniería en Manufactura y Robótica",
+    "Ingeniería en Sistemas Computacionales",
     "Licenciatura en Relaciones Internacionales",
     "Licenciatura en Negocios Internacionales",
-    "Licenciatura en EconomÃ­a y Finanzas",
-    "Licenciatura en AdministraciÃ³n Financiera",
-    "Licenciatura en AdministraciÃ³n de Recursos Humanos",
-    "IngenierÃ­a Industrial y AdministraciÃ³n",
-    "IngenierÃ­a en Software y Redes",
-    "IngenierÃ­a en LogÃ­stica",
-    "Licenciatura en Seguridad PÃºblica",
-    "Licenciatura en CriminologÃ­a",
-    "MaestrÃ­a en AdministraciÃ³n de Negocios",
-    "MaestrÃ­a en AdministraciÃ³n Financiera",
-    "MaestrÃ­a en Mercadotecnia",
-    "MaestrÃ­a en GestiÃ³n de Talento Humano",
-    "MaestrÃ­a en GestiÃ³n de Proyectos",
-    "MaestrÃ­a en Derecho Constitucional y Amparo",
-    "MaestrÃ­a en Derecho Corporativo",
-    "MaestrÃ­a en Derecho Fiscal y Administrativo",
-    "MaestrÃ­a en Derecho Laboral",
-    "MaestrÃ­a en Derecho Procesal",
-    "MaestrÃ­a en Derecho y Juicios Orales",
-    "MaestrÃ­a en EducaciÃ³n y Docencia",
-    "MaestrÃ­a en GestiÃ³n Educativa",
-    "MaestrÃ­a en AdministraciÃ³n de Servicios de Salud",
-    "MaestrÃ­a en AdministraciÃ³n de Negocios y Mercadotecnia",
-    "MaestrÃ­a en Finanzas",
-    "MaestrÃ­a en AdministraciÃ³n PÃºblica",
-    "MaestrÃ­a en DiseÃ±o Digital",
-    "MaestrÃ­a en DiseÃ±o Sostenible y Arquitectura Verde",
-    "MaestrÃ­a en DiseÃ±o EstratÃ©gico e InnovaciÃ³n",
-    "MaestrÃ­a en RobÃ³tica y AutomatizaciÃ³n",
-    "MaestrÃ­a en Inteligencia Artificial",
-    "MaestrÃ­a en EnergÃ­as Renovables",
-    "MaestrÃ­a en InteracciÃ³n y Experiencia del Usuario",
-    "MaestrÃ­a en LogÃ­stica y Cadena de Suministro",
+    "Licenciatura en Economía y Finanzas",
+    "Licenciatura en Administración Financiera",
+    "Licenciatura en Administración de Recursos Humanos",
+    "Ingeniería Industrial y Administración",
+    "Ingeniería en Software y Redes",
+    "Ingeniería en Logistica",
+    "Licenciatura en Seguridad Pública",
+    "Licenciatura en Criminología",
+    "Maestría en Administración de Negocios",
+    "Maestría en Administración Financiera",
+    "Maestría en Mercadotecnia",
+    "Maestría en Gestión de Talento Humano",
+    "Maestría en Gestión de Proyectos",
+    "Maestría en Derecho Constitucional y Amparo",
+    "Maestría en Derecho Corporativo",
+    "Maestría en Derecho Fiscal y Administrativo",
+    "Maestría en Derecho Laboral",
+    "Maestría en Derecho Procesal",
+    "Maestría en Derecho y Juicios Orales",
+    "Maestría en Educación y Docencia",
+    "Maestría en Gestión Educativa",
+    "Maestría en Administración de Servicios de Salud",
+    "Maestría en Administración de Negocios y Mercadotecnia",
+    "Maestría en Finanzas",
+    "Maestría en Administración Pública",
+    "Maestría en Diseño Digital",
+    "Maestría en Diseño Sostenible y Arquitectura Verde",
+    "Maestría en Diseño Estratégico e Innovación",
+    "Maestría en Robótica y Automatización",
+    "Maestría en Inteligencia Artificial",
+    "Maestría en Energías Renovables",
+    "Maestría en Interacción y Experiencia del Usuario",
+    "Maestría en Logística y Cadena de Suministro",
   ];
 
   const onlineProgramKeys = new Map<string, string>();
@@ -701,6 +751,7 @@ const fetchAvailability = async () => {
     const modalidad = String(entry.modalidad ?? "").toLowerCase();
     if (modalidad !== "online") return;
     const programKey = normalizeProgramKey(String(entry.programa ?? ""));
+    if (!programKey || !onlineProgramKeys.has(programKey)) return;
     const plantelKey = normalizeText(String(entry.plantel ?? ""));
     if (!programKey || !plantelKey) return;
     const key = `${programKey}::${modalidad}::${plantelKey}`;
@@ -733,7 +784,7 @@ const fetchAvailability = async () => {
       programa,
       modalidad: "online",
       horario: "",
-      planUrl: planUrlByProgram.get(key) ?? "",
+      planUrl: planUrlByProgram.get(key) ?? planUrlCsvMap.get(key) ?? "",
       activo: true,
     });
   });
@@ -853,8 +904,7 @@ export default async function handler(req: any, res: any) {
         : { availability, updatedAt: updatedAt.toISOString() }
     );
   } catch (err) {
-    const details =
-      err instanceof Error ? err.message : "Error desconocido.";
+    const details = err instanceof Error ? err.message : "Error desconocido.";
     const cached = await getAvailabilityCache(
       String(url.searchParams.get("slug") ?? "unidep")
         .trim()

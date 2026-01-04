@@ -1,12 +1,12 @@
+import csv
 import json
 from pathlib import Path
-
 import openpyxl
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 XLSX_PATH = Path(r"C:\Users\RicardoMartinezH\Downloads\OPP_ Portafolio C1 2026.xlsx")
 OUTPUT_PATH = BASE_DIR / "scripts" / "availability_payload.json"
+PLAN_URL_PATH = BASE_DIR / "scripts" / "programs_plan_urls.csv"
 
 
 def normalize_text(value: str) -> str:
@@ -93,7 +93,7 @@ def build_online_availability(rows, sheet_name, links_by_row, links_by_cell, hid
         return links_by_cell.get((r_idx, c_idx)) or links_by_row.get(r_idx, "")
 
     def parse_headers(headers, end_override=None):
-        for idx, (row_idx, col_idx, label) in enumerate(headers):
+        for row_idx, col_idx, label in headers:
             next_row = None
             for h in header_matches:
                 if h[0] > row_idx:
@@ -233,6 +233,20 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     availability = []
     debug = []
+    plan_url_by_program = {}
+
+    if PLAN_URL_PATH.exists():
+        with PLAN_URL_PATH.open("r", newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                program = row.get("programa", "")
+                url = row.get("plan_url", "")
+                key = normalize_program_key(program)
+                if not key or not url:
+                    continue
+                if key in plan_url_by_program:
+                    continue
+                plan_url_by_program[key] = url
 
     for sheet_name in wb.sheetnames:
         sheet = wb[sheet_name]
@@ -248,8 +262,7 @@ def main():
         availability.extend(entries)
         debug.append({"plantel": sheet_name, "entries": len(entries)})
 
-    # plan URL fallback for online
-    plan_url_by_program = {}
+    # plan URL fallback for online (from planteles if needed)
     for entry in availability:
         if entry["modalidad"] == "online":
             continue
@@ -266,7 +279,6 @@ def main():
         if key in plan_url_by_program:
             entry["planUrl"] = plan_url_by_program[key]
 
-    # add missing online programs from allowlist
     allowlist = [
         "Licenciatura en Administración de Empresas",
         "Licenciatura en Administración de Empresas Turísticas",
@@ -289,7 +301,7 @@ def main():
         "Licenciatura en Administración de Recursos Humanos",
         "Ingeniería Industrial y Administración",
         "Ingeniería en Software y Redes",
-        "Ingeniería en Logística",
+        "Ingeniería en Logistica",
         "Licenciatura en Seguridad Pública",
         "Licenciatura en Criminología",
         "Maestría en Administración de Negocios",
@@ -318,22 +330,7 @@ def main():
         "Maestría en Interacción y Experiencia del Usuario",
         "Maestría en Logística y Cadena de Suministro",
     ]
-    online_keys = {normalize_program_key(entry["programa"]) for entry in availability if entry["modalidad"] == "online"}
-    for programa in allowlist:
-        key = normalize_program_key(programa)
-        if key in online_keys:
-            continue
-        availability.append(
-            {
-                "id": f"online-allowlist-{key}",
-                "plantel": "Online",
-                "programa": to_title_case(programa),
-                "modalidad": "online",
-                "horario": "",
-                "planUrl": plan_url_by_program.get(key, ""),
-                "activo": True,
-            }
-        )
+    allowlist_keys = {normalize_program_key(programa) for programa in allowlist}
 
     deduped = {}
     non_online = []
@@ -341,7 +338,10 @@ def main():
         if entry["modalidad"] != "online":
             non_online.append(entry)
             continue
-        key = f"{normalize_program_key(entry['programa'])}::online::{normalize_text(entry['plantel'])}"
+        program_key = normalize_program_key(entry["programa"])
+        if program_key not in allowlist_keys:
+            continue
+        key = f"{program_key}::online::{normalize_text(entry['plantel'])}"
         current = deduped.get(key)
         if not current:
             deduped[key] = entry
@@ -351,6 +351,22 @@ def main():
             continue
         if not current.get("horario") and entry.get("horario"):
             deduped[key] = entry
+
+    online_keys = {normalize_program_key(entry["programa"]) for entry in deduped.values()}
+    for programa in allowlist:
+        key = normalize_program_key(programa)
+        if key in online_keys:
+            continue
+        deduped[key + "::online::online"] = {
+            "id": f"online-allowlist-{key}",
+            "plantel": "Online",
+            "programa": to_title_case(programa),
+            "modalidad": "online",
+            "horario": "",
+            "planUrl": plan_url_by_program.get(key, ""),
+            "activo": True,
+        }
+
     payload = {"availability": non_online + list(deduped.values()), "debug": debug}
     OUTPUT_PATH.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     print(f"Wrote {len(availability)} entries to {OUTPUT_PATH}")

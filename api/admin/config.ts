@@ -39,7 +39,10 @@ function normalizeConfig(config: any) {
         ...emptyConfig.defaults.beneficio,
         ...(config.defaults?.beneficio ?? {}),
         rules: Array.isArray(config.defaults?.beneficio?.rules)
-          ? config.defaults.beneficio.rules
+          ? config.defaults.beneficio.rules.map((rule: any) => ({
+              ...rule,
+              plan: String(rule?.plan ?? "*"),
+            }))
           : [],
       },
     },

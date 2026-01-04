@@ -1,0 +1,444 @@
+{
+  "rules": [
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Aguascalientes"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Aguascalientes"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 613,
+      "comentario": "$4,085"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Chihuahua"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 626,
+      "comentario": "$4,170"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Culiacán"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Culiacán"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 695,
+      "comentario": "$4,635"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Hermosillo"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Descuento 1er cuatrimestre"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Hermosillo"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 746,
+      "comentario": "$4,970"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Querétaro"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Querétaro"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 695,
+      "comentario": "$4,635"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Tijuana"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Descuento 1er cuatrimestre"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Tijuana"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 746,
+      "comentario": "$4,970"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Veracruz"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Veracruz"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 613,
+      "comentario": "$4,085"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Altamira"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Altamira"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 613,
+      "comentario": "$4,085"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Ensenada"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Los Cabos"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Mexicali"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Mexicali"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Nogales"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 20,
+      "comentario": "Descuento 1er cuatrimestre"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Nogales"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Puerto Peñasco"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Saltillo"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Torreón"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Agua Prieta"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca 15%  Sobre Beca académica"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Agua Prieta"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Cananea"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca 15%  Sobre Beca académica"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Cananea"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Cd. Del Carmen"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Cd. Mante"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "La Paz"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 25,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "La Paz"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 746,
+      "comentario": "$4,970"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Cd. Obregón"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Teocaltiche"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 643,
+      "comentario": "$4,285"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Tuxpan"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Descuento 1er cuatrimestre"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Tuxpan"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Zacatecas"
+      ],
+      "modalidad": "mixta",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "salud",
+      "plantel": [
+        "Zacatecas"
+      ],
+      "modalidad": "*",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 689,
+      "comentario": "$4,590"
+    },
+    {
+      "lineaNegocio": "licenciatura",
+      "plantel": [
+        "Online"
+      ],
+      "modalidad": "online",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 10,
+      "comentario": "Beca"
+    },
+    {
+      "lineaNegocio": "preparatoria",
+      "plantel": [
+        "Hermosillo"
+      ],
+      "modalidad": "presencial",
+      "plan": "*",
+      "activo": true,
+      "porcentaje": 15,
+      "comentario": "Descuento 1er cuatrimestre"
+    }
+  ]
+}

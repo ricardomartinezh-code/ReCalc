@@ -15,7 +15,6 @@ import {
   clearAdminConfig,
   fetchAdminConfig,
   getAdminConfig,
-  resolveDefaultBenefit,
   saveAdminConfig,
   updateAdminConfig,
 } from "../utils/adminConfig";
@@ -49,6 +48,12 @@ const modalidadOptions: Array<{ value: string; label: string }> = [
   { value: "presencial", label: "Presencial" },
   { value: "online", label: "Online" },
   { value: "mixta", label: "Mixta" },
+];
+const planOptions: Array<{ value: string; label: string }> = [
+  { value: "*", label: "Todos" },
+  { value: "11", label: "11 cuatrimestres" },
+  { value: "9", label: "9 cuatrimestres" },
+  { value: "6", label: "6 cuatrimestres" },
 ];
 
 const nivelOptions: Array<{ value: Nivel; label: string }> = [
@@ -192,9 +197,6 @@ export default function AdminPage() {
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [availabilityFetchedAt, setAvailabilityFetchedAt] = useState("");
-  const [previewLinea, setPreviewLinea] = useState<Nivel | "*">("licenciatura");
-  const [previewModalidad, setPreviewModalidad] = useState("presencial");
-  const [previewPlantel, setPreviewPlantel] = useState("*");
   const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [availabilityFilterPlantel, setAvailabilityFilterPlantel] =
     useState("*");
@@ -214,17 +216,6 @@ export default function AdminPage() {
   const [benefitPlantelQuery, setBenefitPlantelQuery] = useState<
     Record<number, string>
   >({});
-
-  const previewRule = useMemo(
-    () =>
-      resolveDefaultBenefit(
-        config,
-        previewModalidad,
-        previewPlantel,
-        previewLinea === "*" ? "*" : previewLinea
-      ),
-    [config, previewLinea, previewModalidad, previewPlantel]
-  );
 
   const normalizeProgramaText = (value: string) =>
     value
@@ -1018,6 +1009,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                           lineaNegocio: "*",
                           modalidad: "*",
                           plantel: ["*"],
+                          plan: "*",
                           activo: false,
                           porcentaje: 10,
                           comentario: "",
@@ -1116,9 +1108,10 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               </div>
             ) : null}
             {!benefitCollapsed && (
-              <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
+              <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_.8fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
               <span>Linea</span>
               <span>Modalidad</span>
+              <span>Plan</span>
               <span>Plantel</span>
               <span>Estado</span>
               <span>%</span>
@@ -1130,7 +1123,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               benefitRulesFiltered.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
+                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_.8fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
               >
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
@@ -1164,6 +1157,24 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                     className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
                   >
                     {modalidadOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                    Plan
+                  </span>
+                  <select
+                    value={rule.plan ?? "*"}
+                    onChange={(event) =>
+                      updateBenefitRule(index, { plan: event.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  >
+                    {planOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -1316,68 +1327,6 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 </button>
               </div>
             ))}
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-200">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-              Vista previa en UI publica
-            </p>
-            <div className="mt-2 grid gap-2 md:grid-cols-3">
-              <select
-                value={previewLinea}
-                onChange={(event) => setPreviewLinea(event.target.value as Nivel | "*")}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-              >
-                {nivelOptionsAll.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={previewModalidad}
-                onChange={(event) => setPreviewModalidad(event.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-              >
-                {modalidadOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={previewPlantel}
-                onChange={(event) => setPreviewPlantel(event.target.value)}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
-              >
-                <option value="*">Todos los planteles</option>
-                {plantelOptions.map((plantel) => (
-                  <option key={plantel} value={plantel}>
-                    {plantel}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mt-3 rounded-lg border border-slate-800/80 bg-slate-900/40 px-3 py-2">
-              {previewRule ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-emerald-500/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-emerald-200">
-                    {previewRule.activo ? "Activo" : "Inactivo"}
-                  </span>
-                  <span className="text-xs text-slate-100">
-                    {previewRule.porcentaje}% de beneficio
-                  </span>
-                  {previewRule.comentario ? (
-                    <span className="text-[11px] text-amber-100">
-                      {previewRule.comentario}
-                    </span>
-                  ) : null}
-                </div>
-              ) : (
-                <span className="text-xs text-slate-400">
-                  Sin beneficio configurado para esta combinacion.
-                </span>
-              )}
-            </div>
           </div>
         </section>
 
