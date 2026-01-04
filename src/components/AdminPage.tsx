@@ -266,6 +266,8 @@ export default function AdminPage() {
     "w-full md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.5rem)] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
   const adjustmentWideClass =
     "w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100";
+  const rowCardClass =
+    "flex flex-wrap gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3";
 
   const loadDraft = (slugValue: string) => {
     if (typeof window === "undefined") return null;
@@ -1107,26 +1109,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                 Resultados ocultos. Usa el buscador o filtros y luego despliega.
               </div>
             ) : null}
-            {!benefitCollapsed && (
-              <div className="grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500 md:grid-cols-[1.1fr_1.1fr_.8fr_1.3fr_.8fr_.8fr_1.4fr_auto]">
-              <span>Linea</span>
-              <span>Modalidad</span>
-              <span>Plan</span>
-              <span>Plantel</span>
-              <span>Estado</span>
-              <span>%</span>
-              <span>Comentario</span>
-              <span></span>
-              </div>
-            )}
             {!benefitCollapsed &&
               benefitRulesFiltered.map((rule, index) => (
               <div
                 key={`${rule.modalidad}-${rule.plantel}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.1fr_1.1fr_.8fr_1.3fr_.8fr_.8fr_1.4fr_auto] md:items-center"
+                className={rowCardClass}
               >
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Linea
                   </span>
                   <select
@@ -1136,7 +1126,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         lineaNegocio: event.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                   >
                     {nivelOptionsAll.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -1146,7 +1136,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Modalidad
                   </span>
                   <select
@@ -1154,7 +1144,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                     onChange={(event) =>
                       updateBenefitRule(index, { modalidad: event.target.value })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                   >
                     {modalidadOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -1164,7 +1154,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Plan
                   </span>
                   <select
@@ -1172,7 +1162,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                     onChange={(event) =>
                       updateBenefitRule(index, { plan: event.target.value })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                   >
                     {planOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -1182,7 +1172,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Plantel
                   </span>
                   <div
@@ -1196,7 +1186,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                           prev === index ? null : index
                         )
                       }
-                      className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-left text-xs text-slate-100"
+                      className={`${adjustmentFieldClass} text-left`}
                     >
                       {(() => {
                         const selected = normalizeBenefitPlanteles(rule.plantel);
@@ -1258,7 +1248,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Estado
                   </span>
                   <select
@@ -1268,14 +1258,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         activo: event.target.value === "si",
                       })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                   >
                     <option value="si">Activo</option>
                     <option value="no">Inactivo</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     %
                   </span>
                   <input
@@ -1288,12 +1278,12 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         porcentaje: Number(event.target.value || 0),
                       })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                     placeholder="%"
                   />
                 </div>
-                <div className="space-y-1 md:col-span-2">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 md:hidden">
+                <div className="space-y-1 w-full">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
                     Comentario
                   </span>
                   <input
@@ -1301,7 +1291,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                     onChange={(event) =>
                       updateBenefitRule(index, { comentario: event.target.value })
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentWideClass}
                     placeholder="Comentario (opcional)"
                   />
                 </div>
@@ -1565,7 +1555,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                           return (
                             <div
                               key={`${plantel}-${idx}`}
-                              className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-800/70 bg-slate-900/40 px-3 py-2 text-xs"
+                              className={rowCardClass}
                             >
                               {isEditable ? (
                                 <input
@@ -1576,7 +1566,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                       { programa: event.target.value }
                                     )
                                   }
-                                  className="flex-1 min-w-[220px] rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                  className={adjustmentFieldClass}
                                   placeholder="Programa academico"
                                 />
                               ) : (
@@ -1595,7 +1585,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                     : undefined
                                 }
                                 disabled={!isEditable}
-                                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 disabled:cursor-not-allowed disabled:text-slate-500"
+                                className={adjustmentFieldClass}
                               >
                                 <option value="presencial">Escolarizado</option>
                                 <option value="mixta">Ejecutivo</option>
@@ -1608,7 +1598,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                     horario: event.target.value,
                                   })
                                 }
-                                className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                className={adjustmentFieldClass}
                                 placeholder="Horario"
                               />
                               <input
@@ -1618,7 +1608,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                                     planUrl: event.target.value,
                                   })
                                 }
-                                className="min-w-[220px] flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                                className={adjustmentFieldClass}
                                 placeholder="URL plan de estudios"
                               />
                               <label className="flex items-center gap-2 text-[11px] text-slate-300">
@@ -1701,14 +1691,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
             {(config.materiaOverrides ?? []).map((override, index) => (
               <div
                 key={`${override.programa}-${override.materias}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1.2fr_.7fr_.9fr_auto]"
+                className={rowCardClass}
               >
                 <select
                   value={override.programa}
                   onChange={(event) =>
                     updateMateriaOverride(index, { programa: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {programaOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -1721,7 +1711,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateMateriaOverride(index, { modalidad: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {modalidadOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -1734,7 +1724,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateMateriaOverride(index, { plantel: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   <option value="*">Todos los planteles</option>
                   {plantelOptions.map((plantel) => (
@@ -1750,7 +1740,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       materias: Number(event.target.value) || 1,
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {[1, 2, 3, 4, 5].map((value) => (
                     <option key={value} value={value}>
@@ -1766,7 +1756,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       precio: Number(event.target.value),
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                   placeholder="Precio"
                 />
                 <button
@@ -1779,7 +1769,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       ),
                     }))
                   }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                  className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                 >
                   Quitar
                 </button>
@@ -2011,20 +2001,11 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               Agregar correccion
             </button>
           </div>
-          <div className="hidden md:grid md:grid-cols-[1fr_1fr_1fr_.7fr_1.3fr_1fr_auto] gap-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
-            <span>Programa</span>
-            <span>Nivel</span>
-            <span>Modalidad</span>
-            <span>Plan</span>
-            <span>Plantel</span>
-            <span>Precio lista</span>
-            <span></span>
-          </div>
           <div className="space-y-3">
             {config.priceOverrides.map((override, index) => (
               <div
                 key={`${override.programa}-${override.nivel}-${override.plan}-${index}`}
-                className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1fr_1fr_1fr_.7fr_1.3fr_1fr_auto]"
+                className={rowCardClass}
               >
                 <select
                   value={override.programa}
@@ -2033,7 +2014,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       programa: event.target.value,
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {programaOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -2046,7 +2027,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateOverride(index, { nivel: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {nivelOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -2059,7 +2040,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateOverride(index, { modalidad: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   {modalidadOptions
                     .filter((option) => option.value !== "*")
@@ -2078,7 +2059,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       plan: Number(event.target.value || 0),
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                   placeholder="Plan"
                 />
                 <select
@@ -2086,7 +2067,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                   onChange={(event) =>
                     updateOverride(index, { plantel: event.target.value })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                 >
                   <option value="*">Todos los planteles</option>
                   {plantelOptions.map((plantel) => (
@@ -2104,7 +2085,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       precioLista: Number(event.target.value || 0),
                     })
                   }
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                  className={adjustmentFieldClass}
                   placeholder="Precio lista"
                 />
                 <button
@@ -2117,7 +2098,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                       ),
                     }))
                   }
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                  className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                 >
                   Quitar
                 </button>
@@ -2166,14 +2147,14 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
               return (
                 <div
                   key={shortcut.id || `${shortcut.label}-${index}`}
-                  className="grid gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 md:grid-cols-[1.2fr_2fr_auto]"
+                  className={rowCardClass}
                 >
                   <input
                     value={shortcut.label}
                     onChange={(event) =>
                       updateShortcut(index, { label: event.target.value })
                     }
-                    className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                     placeholder="Etiqueta"
                   />
                   <input
@@ -2183,7 +2164,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         url: event.target.value,
                       })
                     }
-                    className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100"
+                    className={adjustmentFieldClass}
                     placeholder="https://..."
                   />
                   <div className="flex flex-wrap items-center gap-2 md:col-span-2">
@@ -2223,7 +2204,7 @@ const updateShortcut = (index: number, patch: Partial<AdminShortcut>) =>
                         shortcuts: prev.shortcuts.filter((_, idx) => idx !== index),
                       }))
                     }
-                    className="rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition"
+                    className="w-full rounded-lg border border-slate-700 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-300 hover:border-rose-400/70 hover:text-rose-200 transition md:w-auto"
                   >
                     Quitar
                   </button>
